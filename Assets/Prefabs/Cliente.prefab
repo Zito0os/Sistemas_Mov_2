@@ -128,7 +128,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ClienteIA
   puntosDeRuta: []
-  velocidad: 2
+  velocidad: 4
   distanciaLlegada: 0.2
   puntosSalida: []
   diaActual: 1

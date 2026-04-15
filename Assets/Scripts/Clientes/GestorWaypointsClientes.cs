@@ -98,7 +98,7 @@ public class GestorWaypointsClientes : MonoBehaviour
 
     private int ContarClientesActivos()
     {
-        return FindObjectsOfType<ClienteIA>().Length;
+        return FindObjectsByType<ClienteIA>(FindObjectsSortMode.None).Length;
     }
 
     /// <summary>Reinicia el conteo de spawns (llamar al inicio de cada día).</summary>

@@ -259,7 +259,7 @@ public class ClienteIA : MonoBehaviour
         bool tieneSalida = puntosSalida != null && puntosSalida.Length > 0;
         if (tieneRuta && tieneSalida) return;
 
-        var gestor = FindObjectOfType<GestorWaypointsClientes>();
+        var gestor = FindFirstObjectByType<GestorWaypointsClientes>();
         if (gestor == null) return;
 
         if (!tieneRuta)

@@ -21,7 +21,9 @@ public class LightFlicker : MonoBehaviour
     void Start()
     {
         luz = GetComponent<Light>();
-        luz.intensity = secuencia[0];
+        intensidadObjetivo = secuencia[0];
+        luz.intensity = intensidadObjetivo;
+        timer = Random.Range(frecuenciaMin, frecuenciaMax);
     }
 
     void Update()
@@ -31,11 +33,11 @@ public class LightFlicker : MonoBehaviour
         if (timer <= 0f)
         {
             indiceActual = (indiceActual + 1) % secuencia.Length;
-            luz.intensity = secuencia[indiceActual];
+            intensidadObjetivo = secuencia[indiceActual];
             timer = Random.Range(frecuenciaMin, frecuenciaMax);
         }
 
-         luz.intensity = Mathf.Lerp(luz.intensity, intensidadObjetivo,
+        luz.intensity = Mathf.Lerp(luz.intensity, intensidadObjetivo,
                                    Time.deltaTime * velocidadLerp);
 
     }

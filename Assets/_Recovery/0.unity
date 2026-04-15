@@ -763,6 +763,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &224914300
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 224914301}
+  m_Layer: 0
+  m_Name: GestorClientes
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &224914301
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 224914300}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 91.72193, y: -0, z: -75.62482}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &238288488
 GameObject:
   m_ObjectHideFlags: 0
@@ -2362,7 +2393,7 @@ Transform:
   m_GameObject: {fileID: 1096208303}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -13.04, y: 1.39, z: -2.829998}
+  m_LocalPosition: {x: -13.040001, y: 1.39, z: -2.829998}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2940,79 +2971,6 @@ PrefabInstance:
       addedObject: {fileID: 791969953}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -4161369568681901532, guid: be47fc53a3680bf498929bd2a1ec6d6d, type: 3}
---- !u!1 &1443829458
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1443829460}
-  - component: {fileID: 1443829459}
-  - component: {fileID: 1443829461}
-  m_Layer: 0
-  m_Name: GameManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1443829459
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1443829458}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b42039bb96522774aa785abfc46894ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  diaInicial: 1
-  diasPorSemana: 3
-  iniciarEnMainMenu: 1
-  inicioSemanaActual: 1
-  habilitarAtajosDebug: 1
-  teclaSiguienteDia: 114
---- !u!4 &1443829460
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1443829458}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -12.3195, y: 5.32397, z: -19.04362}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1443829461
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1443829458}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dcdeddd12f4de0347ad5c70c75876cf4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CuotaDePiso
-  cuotaBase: 50
-  incrementoPorSemana: 40
-  resolverAutomaticamente: 1
-  teclaForzarPago: 112
-  teclaForzarNoPago: 111
-  cuotaActual: 0
-  cuotaPendiente: 0
-  mostrarMenuResultado: 0
-  cuotaCumplida: 0
-  mensajeResultado: 
 --- !u!1001 &1494861375
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4231,9 +4189,6 @@ GameObject:
   - component: {fileID: 1964370381}
   - component: {fileID: 1964370382}
   - component: {fileID: 1964370383}
-  - component: {fileID: 1964370384}
-  - component: {fileID: 1964370385}
-  - component: {fileID: 1964370386}
   m_Layer: 0
   m_Name: WAYPOINTS
   m_TagString: Untagged
@@ -4249,8 +4204,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1964370380}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.39715, y: 0.5, z: -34.78632}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 5.397148, y: 0.5, z: -34.78632}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4282,8 +4237,8 @@ MonoBehaviour:
   - {fileID: 1096208304}
   prefabCliente: {fileID: 3711233411848713500, guid: 14fdf0631c5dc0847bed95db83c6984d, type: 3}
   puntoSpawn: {fileID: 980683726}
-  autoSpawn: 1
-  intervaloSpawn: 4
+  autoSpawn: 0
+  intervaloSpawn: 6
   maxClientesActivos: 1
   limiteSpawn: 0
   diaActual: 1
@@ -4305,64 +4260,6 @@ MonoBehaviour:
   _clientesDelDia: 0
   _clientesRestantes: 0
   _intervaloActual: 0
---- !u!114 &1964370384
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1964370380}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f99d9ebe1390054da09cc4b45209eac, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SistemaOrdenes
-  modoDebug: 1
---- !u!114 &1964370385
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1964370380}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 147bc62387e6f344089f2698e5cfbedc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GestorEconomia
-  balanceInicial: 0
-  balanceActual: 0
-  ingresosAcumulados: 0
-  gastosAcumulados: 0
-  balanceInicioSemana: 0
---- !u!114 &1964370386
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1964370380}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9736f322a52d4e34d83bc602d078a0e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SistemaCompras
-  teclaTienda: 116
-  tiendaAbierta: 0
-  catalogo:
-  - nombre: Carne (placeholder)
-    precio: 20
-    stock: 10
-  - nombre: Tortillas (placeholder)
-    precio: 8
-    stock: 30
-  - nombre: Verduras (placeholder)
-    precio: 12
-    stock: 20
-  - nombre: Ingrediente especial (placeholder)
-    precio: 35
-    stock: 5
-  ultimoMensaje: "Sin compras a\xFAn."
 --- !u!23 &966859165169037
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -12134,7 +12031,6 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 563610293}
-  - {fileID: 1443829460}
   - {fileID: 1494861375}
   - {fileID: 842616343}
   - {fileID: 224880847}
@@ -12166,4 +12062,5 @@ SceneRoots:
   - {fileID: 789508617}
   - {fileID: 754392292}
   - {fileID: 1197317106}
+  - {fileID: 224914301}
   - {fileID: 1964370381}

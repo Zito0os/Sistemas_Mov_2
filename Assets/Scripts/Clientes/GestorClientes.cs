@@ -59,18 +59,24 @@ public class GestorClientes : MonoBehaviour
     {
         ClienteIA.alIrseCliente += AlIrseUnCliente;
         GestorWaypointsClientes.alSpawnearCliente += AlSpawnearUnCliente;
+
+        GameManager.OnDayChanged += AlCambiarDia;
+        GameManager.OnStateChanged += AlCambiarEstadoJuego;
     }
 
     private void OnDisable()
     {
         ClienteIA.alIrseCliente -= AlIrseUnCliente;
         GestorWaypointsClientes.alSpawnearCliente -= AlSpawnearUnCliente;
+
+        GameManager.OnDayChanged -= AlCambiarDia;
+        GameManager.OnStateChanged -= AlCambiarEstadoJuego;
     }
 
     private void Start()
     {
         if (gestorWaypoints == null)
-            gestorWaypoints = FindObjectOfType<GestorWaypointsClientes>();
+            gestorWaypoints = FindFirstObjectByType<GestorWaypointsClientes>();
 
         if (gestorWaypoints == null)
         {
@@ -80,6 +86,16 @@ public class GestorClientes : MonoBehaviour
 
         // Desactivar spawn hasta que empiece el turno
         gestorWaypoints.autoSpawn = false;
+
+        if (GameManager.Instance != null)
+        {
+            diaActual = GameManager.Instance.CurrentDay;
+            Debug.Log($"[GestorClientes] Día sincronizado desde GameManager: {diaActual}");
+        }
+        else
+        {
+            Debug.LogWarning($"[GestorClientes] No hay GameManager activo. Se usará diaActual local: {diaActual}");
+        }
 
         if (iniciarAlArrancar)
             IniciarTurno(diaActual);
@@ -180,6 +196,39 @@ public class GestorClientes : MonoBehaviour
         // GameManager.Instance.AdvanceToNextState();
     }
 
+    private void AlCambiarDia(int nuevoDia)
+    {
+        diaActual = nuevoDia;
+        Debug.Log($"[GestorClientes] Día actualizado por evento: {diaActual}");
+    }
+
+    private void AlCambiarEstadoJuego(GameManager.GameState nuevoEstado)
+    {
+        if (nuevoEstado == GameManager.GameState.StartDay)
+        {
+            if (GameManager.Instance != null)
+                diaActual = GameManager.Instance.CurrentDay;
+
+            Debug.Log($"[GestorClientes] StartDay detectado. Preparando turno del día {diaActual}.");
+            IniciarTurno(diaActual);
+            return;
+        }
+
+        if (nuevoEstado == GameManager.GameState.Playing && !_turnoActivo)
+        {
+            Debug.Log($"[GestorClientes] Playing detectado sin turno activo. Iniciando día {diaActual}.");
+            IniciarTurno(diaActual);
+            return;
+        }
+
+        if (nuevoEstado == GameManager.GameState.Results ||
+            nuevoEstado == GameManager.GameState.CuotaDePiso ||
+            nuevoEstado == GameManager.GameState.GameOver)
+        {
+            DetenerTurno();
+        }
+    }
+
     // DIFICULTAD POR DÍA
 
     private struct DificultadDelDia
@@ -192,9 +241,9 @@ public class GestorClientes : MonoBehaviour
     /// <summary>
     /// Define cuántos clientes llegan y qué tan seguido según el día.
     ///
-    ///   Días 1-3:  2-3 clientes, 1 a la vez, cada 8s   → fácil
-    ///   Días 4-7:  4-5 clientes, 2 a la vez, cada 6s   → medio
-    ///   Días 8+:   6-8 clientes, 3 a la vez, cada 4s   → difícil
+    ///   Días 1-3:  2-3 clientes, 1 a la vez, cada 3s    → fácil
+    ///   Días 4-7:  4-5 clientes, 2 a la vez, cada 2.5s  → medio
+    ///   Días 8+:   6-8 clientes, 3 a la vez, cada 2s    → difícil
     /// </summary>
     private DificultadDelDia CalcularDificultad(int dia)
     {
@@ -203,7 +252,7 @@ public class GestorClientes : MonoBehaviour
             {
                 totalClientes = Random.Range(6, 9),
                 maxSimultaneos = 3,
-                intervaloSpawn = 4f
+                intervaloSpawn = 2f
             };
 
         if (dia >= 4)
@@ -211,14 +260,14 @@ public class GestorClientes : MonoBehaviour
             {
                 totalClientes = Random.Range(4, 6),
                 maxSimultaneos = 2,
-                intervaloSpawn = 6f
+                intervaloSpawn = 2.5f
             };
 
         return new DificultadDelDia
         {
             totalClientes = Random.Range(2, 4),
             maxSimultaneos = 1,
-            intervaloSpawn = 8f
+            intervaloSpawn = 3f
         };
     }
 

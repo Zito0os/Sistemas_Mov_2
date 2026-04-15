@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// GameManager — Orquestador principal de Don Paco Taco.
@@ -15,14 +16,25 @@ using UnityEngine;
 ///      ↓
 ///   StartDay   ← repite para el siguiente día
 ///
-///   Cada 7 días, después de Results, se inserta:
+///   Cada N días (diasPorSemana), después de Results, se inserta:
 ///   CuotaDePiso ← cobro semanal del cartel (¿tienes suficiente?)
-///      → si no pagas 3 semanas consecutivas → GameOver
+///      → si no pagas, vuelves al inicio de la semana actual
 ///
 /// </summary>
-/*
 public class GameManager : MonoBehaviour
 {
+    [Header("Configuración de partida")]
+    [SerializeField, Min(1)] private int diaInicial = 1;
+    [SerializeField, Min(1)] private int diasPorSemana = 3;
+    [SerializeField] private bool iniciarEnMainMenu = true;
+
+    [Header("Debug (runtime)")]
+    [SerializeField] private int inicioSemanaActual = 1;
+
+    [Header("Debug teclas")]
+    [SerializeField] private bool habilitarAtajosDebug = true;
+    [SerializeField] private KeyCode teclaSiguienteDia = KeyCode.R;
+
     // SINGLETON
 
     public static GameManager Instance { get; private set; }
@@ -59,10 +71,16 @@ public class GameManager : MonoBehaviour
     public int CurrentDay { get; private set; } = 1;
 
     /// <summary>Cada cuántos días se cobra la cuota.</summary>
-    private const int DAYS_PER_WEEK = 7;
+    public int DaysPerWeek => Mathf.Max(1, diasPorSemana);
 
     /// <summary>¿El día actual es día de cobro?</summary>
-    public bool IsPaymentDay => CurrentDay % DAYS_PER_WEEK == 0;
+    public bool IsPaymentDay => CurrentDay % DaysPerWeek == 0;
+
+    /// <summary>Semana actual (1-based).</summary>
+    public int CurrentWeek => ((CurrentDay - 1) / DaysPerWeek) + 1;
+
+    /// <summary>Día dentro de la semana (1..DaysPerWeek).</summary>
+    public int DayInWeek => ((CurrentDay - 1) % DaysPerWeek) + 1;
 
     // EVENTOS
 
@@ -75,11 +93,44 @@ public class GameManager : MonoBehaviour
     /// <summary>Se dispara al llegar a GameOver.</summary>
     public static event System.Action OnGameOver;
 
+    /// <summary>Se dispara cuando se pierde el progreso semanal y se regresa al inicio de semana.</summary>
+    public static event System.Action<int, int> OnWeeklyProgressReset;
+    // Parámetros: (semana, diaAlQueRegreso)
+
     // INICIO
 
     private void Start()
     {
-        ChangeState(GameState.MainMenu);
+        CurrentDay = Mathf.Max(1, diaInicial);
+        inicioSemanaActual = ObtenerInicioDeSemana(CurrentDay);
+        OnDayChanged?.Invoke(CurrentDay);
+
+        ChangeState(iniciarEnMainMenu ? GameState.MainMenu : GameState.StartDay);
+    }
+
+    private void OnEnable()
+    {
+        GestorClientes.alTerminarTurno += AlTerminarTurno;
+    }
+
+    private void OnDisable()
+    {
+        GestorClientes.alTerminarTurno -= AlTerminarTurno;
+    }
+
+    private void Update()
+    {
+        if (!habilitarAtajosDebug) return;
+        if (!Input.GetKeyDown(teclaSiguienteDia)) return;
+
+        if (CurrentState != GameState.Results)
+        {
+            Debug.Log($"[GameManager][DEBUG] Tecla {teclaSiguienteDia} ignorada. Estado actual: {CurrentState}. Debe ser Results.");
+            return;
+        }
+
+        Debug.Log($"[GameManager][DEBUG] Tecla {teclaSiguienteDia} detectada en Results. Intentando avanzar al siguiente día...");
+        AdvanceToNextState();
     }
 
     // CAMBIO DE ESTADO
@@ -137,16 +188,24 @@ public class GameManager : MonoBehaviour
                 break;
 
             case GameState.Results:
+                Debug.Log($"[GameManager] Evaluando fin de turno — Día global: {CurrentDay} | Semana: {CurrentWeek} | Día en semana: {DayInWeek}/{DaysPerWeek}");
+
                 // ¿Es fin de semana? → cobro del cartel antes de continuar
                 if (IsPaymentDay)
+                {
+                    Debug.Log($"[GameManager] Día de cobro detectado (semana {CurrentWeek}). Entrando a CuotaDePiso.");
                     ChangeState(GameState.CuotaDePiso);
+                }
                 else
+                {
+                    Debug.Log("[GameManager] No es día de cobro. Avanzando al siguiente día.");
                     StartNextDay();
+                }
                 break;
 
             case GameState.CuotaDePiso:
-                // CuotaDePiso.cs decide si GameOver o continua
-                StartNextDay();
+                // CuotaDePiso.cs debe resolver con RegistrarResultadoCuota(...)
+                Debug.Log("[GameManager] Esperando resultado de cuota. Llama RegistrarResultadoCuota(true/false).");
                 break;
 
             case GameState.GameOver:
@@ -155,15 +214,71 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Se llama desde CuotaDePiso al final del cobro.
+    /// pagada = true  → avanza al siguiente día (nueva semana)
+    /// pagada = false → pierde avance de la semana y vuelve al día inicial de esa semana
+    /// </summary>
+    public void RegistrarResultadoCuota(bool pagada)
+    {
+        if (CurrentState != GameState.CuotaDePiso)
+        {
+            Debug.LogWarning("[GameManager] RegistrarResultadoCuota llamado fuera del estado CuotaDePiso.");
+            return;
+        }
+
+        if (pagada)
+        {
+            Debug.Log($"[GameManager] Cuota CUMPLIDA en semana {CurrentWeek}. Avanzando desde día {CurrentDay}.");
+            StartNextDay();
+            return;
+        }
+
+        int semana = CurrentWeek;
+        CurrentDay = inicioSemanaActual;
+        Debug.Log($"[GameManager] Cuota NO cumplida en semana {semana}. Regresando al punto de guardado (inicio de semana) día {CurrentDay}.");
+        OnWeeklyProgressReset?.Invoke(semana, CurrentDay);
+        OnDayChanged?.Invoke(CurrentDay);
+        ChangeState(GameState.StartDay);
+        RecargarEscenaDelDiaActual();
+    }
+
     // HELPERS INTERNOS
 
     /// <summary>Incrementa el día y arranca el siguiente ciclo.</summary>
     private void StartNextDay()
     {
         CurrentDay++;
+        inicioSemanaActual = ObtenerInicioDeSemana(CurrentDay);
         OnDayChanged?.Invoke(CurrentDay);
-        Debug.Log($"[GameManager] Día {CurrentDay} comenzando.");
+        Debug.Log($"[GameManager] Día {CurrentDay} comenzando | Semana actual: {CurrentWeek} | Día en semana: {DayInWeek}/{DaysPerWeek}");
         ChangeState(GameState.StartDay);
+        RecargarEscenaDelDiaActual();
+    }
+
+    private void AlTerminarTurno(int pagosRecibidos, int timeouts, int diaTurno)
+    {
+        if (CurrentState == GameState.GameOver) return;
+
+        Debug.Log($"[GameManager] Turno terminado | Día reportado: {diaTurno} | Día global: {CurrentDay} | Semana: {CurrentWeek} | Día en semana: {DayInWeek}/{DaysPerWeek} | Pagos: {pagosRecibidos} | Timeouts: {timeouts}");
+
+        if (CurrentState != GameState.Results)
+            ChangeState(GameState.Results);
+
+        Debug.Log($"[GameManager][DEBUG] Presiona {teclaSiguienteDia} para avanzar al siguiente día.");
+    }
+
+    private void RecargarEscenaDelDiaActual()
+    {
+        Scene escenaActiva = SceneManager.GetActiveScene();
+        Debug.Log($"[GameManager] Recargando escena '{escenaActiva.name}' para iniciar día {CurrentDay}.");
+        SceneManager.LoadScene(escenaActiva.name);
+    }
+
+    private int ObtenerInicioDeSemana(int dia)
+    {
+        int semanaBaseCero = (Mathf.Max(1, dia) - 1) / DaysPerWeek;
+        return (semanaBaseCero * DaysPerWeek) + 1;
     }
 
     // REINICIO
@@ -171,7 +286,9 @@ public class GameManager : MonoBehaviour
     //Reinicia la partida desde el día 1
     public void RestartGame()
     {
-        CurrentDay = 1;
+        CurrentDay = Mathf.Max(1, diaInicial);
+        inicioSemanaActual = ObtenerInicioDeSemana(CurrentDay);
+        OnDayChanged?.Invoke(CurrentDay);
         Debug.Log("[GameManager] Reiniciando partida...");
         ChangeState(GameState.MainMenu);
     }
@@ -181,4 +298,3 @@ public class GameManager : MonoBehaviour
     public bool IsPlaying()                => CurrentState == GameState.Playing;
     public bool IsGameOver()               => CurrentState == GameState.GameOver;
 }
-*/
