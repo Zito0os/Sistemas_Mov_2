@@ -14,9 +14,9 @@ public class Orden
     public enum TipoCarne
     {
         Pastor,
-        Bisteck,
-        Arrachera,
-        Longaniza
+        Picadillo,
+        Trompo,
+        Desebrada
     }
 
     public enum TipoTopping
@@ -138,9 +138,9 @@ public class Orden
         int precio = carne switch
         {
             TipoCarne.Pastor    => 20,
-            TipoCarne.Bisteck   => 25,
-            TipoCarne.Arrachera => 35,
-            TipoCarne.Longaniza => 30,
+            TipoCarne.Picadillo   => 25,
+            TipoCarne.Trompo => 35,
+            TipoCarne.Desebrada => 30,
             _                   => 20
         };
 

@@ -20,6 +20,13 @@ public class SistemaOrdenes : MonoBehaviour
     [Tooltip("Activa los atajos de teclado para testing sin cocina real")]
     public bool modoDebug = true;
 
+    [Header("Cantidad por orden")]
+    [Tooltip("Cantidad minima de tacos que puede pedir un cliente")]
+    public int cantidadMinimaPorOrden = 1;
+
+    [Tooltip("Cantidad maxima de tacos que puede pedir un cliente")]
+    public int cantidadMaximaPorOrden = 3;
+
     // ESTADO INTERNO
 
     /// <summary>
@@ -27,6 +34,8 @@ public class SistemaOrdenes : MonoBehaviour
     /// Permite tener varios clientes esperando al mismo tiempo.
     /// </summary>
     private Dictionary<ClienteIA, Orden> _ordenesActivas = new Dictionary<ClienteIA, Orden>();
+    private Dictionary<ClienteIA, int> _cantidadRequeridaPorCliente = new Dictionary<ClienteIA, int>();
+    private Dictionary<ClienteIA, int> _cantidadEntregadaPorCliente = new Dictionary<ClienteIA, int>();
 
     // EVENTOS
 
@@ -42,6 +51,9 @@ public class SistemaOrdenes : MonoBehaviour
 
     /// <summary>Una orden fue cancelada por timeout (el cliente se fue sin pagar).</summary>
     public static event System.Action<Orden> alCancelarOrden;
+
+    /// <summary>Progreso de la orden activa: entregados/requeridos.</summary>
+    public static event System.Action<ClienteIA, Orden, int, int> alActualizarProgresoOrden;
 
     // SUSCRIPCIONES
 
@@ -80,12 +92,18 @@ public class SistemaOrdenes : MonoBehaviour
         }
 
         _ordenesActivas[cliente] = orden;
+        int min = Mathf.Max(1, cantidadMinimaPorOrden);
+        int max = Mathf.Max(min, cantidadMaximaPorOrden);
+        int cantidadRequerida = Random.Range(min, max + 1);
+        _cantidadRequeridaPorCliente[cliente] = cantidadRequerida;
+        _cantidadEntregadaPorCliente[cliente] = 0;
 
-        Debug.Log($"[SistemaOrdenes] Nueva orden de {cliente.name}: {orden}");
+        Debug.Log($"[SistemaOrdenes] Nueva orden de {cliente.name}: {orden} | Cantidad: {cantidadRequerida}");
         Debug.Log($"[SistemaOrdenes] Órdenes activas: {_ordenesActivas.Count} | " +
                   $"Presiona E para entregar el taco correcto.");
 
         alRecibirOrden?.Invoke(cliente, orden);
+        alActualizarProgresoOrden?.Invoke(cliente, orden, 0, cantidadRequerida);
     }
 
     /// <summary>Un cliente se fue — si fue timeout, cancelamos su orden.</summary>
@@ -95,6 +113,8 @@ public class SistemaOrdenes : MonoBehaviour
 
         Orden orden = _ordenesActivas[cliente];
         _ordenesActivas.Remove(cliente);
+        _cantidadRequeridaPorCliente.Remove(cliente);
+        _cantidadEntregadaPorCliente.Remove(cliente);
 
         // Si no pagó fue porque se fue por timeout (ClienteIA ya lo manejó)
         if (!pago)
@@ -127,28 +147,55 @@ public class SistemaOrdenes : MonoBehaviour
         }
 
         Orden orden = _ordenesActivas[cliente];
+        int cantidadRequerida = _cantidadRequeridaPorCliente.TryGetValue(cliente, out int req) ? Mathf.Max(1, req) : 1;
+        int cantidadEntregada = _cantidadEntregadaPorCliente.TryGetValue(cliente, out int ent) ? Mathf.Max(0, ent) : 0;
 
         // Evaluar si el taco es correcto
         bool correcto = orden.Coincide(carneEntregada, toppings, tieneTortilla);
 
+        if (!correcto)
+        {
+            // Si un taco llega incorrecto, se cierra la orden como fallo.
+            Debug.Log($"[SistemaOrdenes] Taco entregado — ✗ INCORRECTO | Total: $0");
+            cliente.RecibirTaco(carneEntregada, toppings, tieneTortilla);
+            alCompletarOrden?.Invoke(orden, 0, false);
+            _ordenesActivas.Remove(cliente);
+            _cantidadRequeridaPorCliente.Remove(cliente);
+            _cantidadEntregadaPorCliente.Remove(cliente);
+            return;
+        }
+
+        cantidadEntregada++;
+        _cantidadEntregadaPorCliente[cliente] = cantidadEntregada;
+        alActualizarProgresoOrden?.Invoke(cliente, orden, cantidadEntregada, cantidadRequerida);
+
+        if (cantidadEntregada < cantidadRequerida)
+        {
+            Debug.Log($"[SistemaOrdenes] Taco correcto ({cantidadEntregada}/{cantidadRequerida}) para {cliente.name}.");
+            return;
+        }
+
         // Calcular pago
         float proporcionTiempo = cliente.ObtenerProporcionTiempoUsado();
-        int propina = correcto ? orden.CalcularPropina(proporcionTiempo) : 0;
-        int pagoTotal = correcto ? orden.PrecioBase + propina : 0;
+        int precioBaseTotal = orden.PrecioBase * cantidadRequerida;
+        int propinaPorTaco = orden.CalcularPropina(proporcionTiempo);
+        int propinaTotal = propinaPorTaco * cantidadRequerida;
+        int pagoTotal = precioBaseTotal + propinaTotal;
 
         // Log detallado
-        string resultadoStr = correcto ? "✓ CORRECTO" : "✗ INCORRECTO";
-        Debug.Log($"[SistemaOrdenes] Taco entregado — {resultadoStr} | " +
-                  $"Base: ${orden.PrecioBase} | Propina: ${propina} | Total: ${pagoTotal}");
+        Debug.Log($"[SistemaOrdenes] Pedido completado — ✓ CORRECTO | " +
+                  $"Cantidad: {cantidadRequerida} | Base: ${precioBaseTotal} | Propina: ${propinaTotal} | Total: ${pagoTotal}");
 
         // Notificar al cliente (animación de salida satisfecha o no)
         cliente.RecibirTaco(carneEntregada, toppings, tieneTortilla);
 
         // Notificar a GestorEconomia y UI
-        alCompletarOrden?.Invoke(orden, pagoTotal, correcto);
+        alCompletarOrden?.Invoke(orden, pagoTotal, true);
 
         // Quitar de órdenes activas
         _ordenesActivas.Remove(cliente);
+        _cantidadRequeridaPorCliente.Remove(cliente);
+        _cantidadEntregadaPorCliente.Remove(cliente);
     }
 
     // SIMULACIÓN DE PRUEBA (tecla E)
@@ -188,16 +235,22 @@ public class SistemaOrdenes : MonoBehaviour
 
         // Construir taco idéntico a la orden
         List<Orden.TipoTopping> toppingsPerfectos = new List<Orden.TipoTopping>(ordenObjetivo.Toppings);
+        int cantidadRequerida = _cantidadRequeridaPorCliente.TryGetValue(clienteObjetivo, out int req) ? Mathf.Max(1, req) : 1;
+        int cantidadEntregada = _cantidadEntregadaPorCliente.TryGetValue(clienteObjetivo, out int ent) ? Mathf.Max(0, ent) : 0;
+        int faltantes = Mathf.Max(1, cantidadRequerida - cantidadEntregada);
 
         Debug.Log($"[SistemaOrdenes] [DEBUG - E] Entregando taco simulado para {clienteObjetivo.name} " +
-                  $"→ {ordenObjetivo.Carne} + {string.Join(", ", toppingsPerfectos)}");
+                  $"→ {ordenObjetivo.Carne} x{faltantes} + {string.Join(", ", toppingsPerfectos)}");
 
-        RecibirTacoDelJugador(
-            clienteObjetivo,
-            ordenObjetivo.Carne,
-            toppingsPerfectos,
-            ordenObjetivo.NecesitaTortilla
-        );
+        for (int i = 0; i < faltantes; i++)
+        {
+            RecibirTacoDelJugador(
+                clienteObjetivo,
+                ordenObjetivo.Carne,
+                toppingsPerfectos,
+                ordenObjetivo.NecesitaTortilla
+            );
+        }
     }
 
     // QUERIES
@@ -210,5 +263,74 @@ public class SistemaOrdenes : MonoBehaviour
     {
         _ordenesActivas.TryGetValue(cliente, out Orden orden);
         return orden;
+    }
+
+    public int ObtenerCantidadRequerida(ClienteIA cliente)
+    {
+        return _cantidadRequeridaPorCliente.TryGetValue(cliente, out int cantidad) ? Mathf.Max(1, cantidad) : 1;
+    }
+
+    public int ObtenerCantidadEntregada(ClienteIA cliente)
+    {
+        return _cantidadEntregadaPorCliente.TryGetValue(cliente, out int cantidad) ? Mathf.Max(0, cantidad) : 0;
+    }
+
+    public bool TryObtenerClienteEsperando(out ClienteIA cliente, out Orden orden, out int cantidadRequerida, out int cantidadEntregada)
+    {
+        foreach (var par in _ordenesActivas)
+        {
+            if (par.Key != null && par.Key.Estado == ClienteIA.EstadoCliente.EsperandoComida)
+            {
+                cliente = par.Key;
+                orden = par.Value;
+                cantidadRequerida = ObtenerCantidadRequerida(cliente);
+                cantidadEntregada = ObtenerCantidadEntregada(cliente);
+                return true;
+            }
+        }
+
+        cliente = null;
+        orden = null;
+        cantidadRequerida = 0;
+        cantidadEntregada = 0;
+        return false;
+    }
+
+    public bool TryObtenerClienteCompatible(Orden.TipoCarne carne,
+                                            int cantidadEnPlato,
+                                            out ClienteIA cliente,
+                                            out Orden orden,
+                                            out int cantidadRequerida,
+                                            out int cantidadEntregada)
+    {
+        foreach (var par in _ordenesActivas)
+        {
+            ClienteIA candidato = par.Key;
+            if (candidato == null || candidato.Estado != ClienteIA.EstadoCliente.EsperandoComida)
+                continue;
+
+            Orden ordenCandidata = par.Value;
+            if (ordenCandidata == null || ordenCandidata.Carne != carne)
+                continue;
+
+            int requerida = ObtenerCantidadRequerida(candidato);
+            int entregada = ObtenerCantidadEntregada(candidato);
+            int faltantes = Mathf.Max(0, requerida - entregada);
+
+            if (faltantes != cantidadEnPlato)
+                continue;
+
+            cliente = candidato;
+            orden = ordenCandidata;
+            cantidadRequerida = requerida;
+            cantidadEntregada = entregada;
+            return true;
+        }
+
+        cliente = null;
+        orden = null;
+        cantidadRequerida = 0;
+        cantidadEntregada = 0;
+        return false;
     }
 }

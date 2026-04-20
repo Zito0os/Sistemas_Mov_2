@@ -89,6 +89,19 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public void AplicarRotacionForzada(float yawObjetivo, float pitchObjetivo)
+    {
+        yaw = yawObjetivo;
+        pitch = Mathf.Clamp(pitchObjetivo, minPitch, maxPitch);
+
+        Transform cam = cameraTransform != null ? cameraTransform : (Camera.main != null ? Camera.main.transform : null);
+
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+
+        if (cam != null)
+            cam.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+    }
+
     void HandleTouchCamera(ref float deltaX, ref float deltaY)
     {
         float halfScreen = Screen.width * 0.5f;
