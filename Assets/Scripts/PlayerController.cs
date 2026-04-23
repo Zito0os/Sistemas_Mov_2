@@ -28,6 +28,9 @@ public class PlayerController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        if (joystick == null)
+            joystick = FindFirstObjectByType<VirtualJoystick>();
+
         if (cameraTransform != null)
             pitch = cameraTransform.localEulerAngles.x;
 
@@ -42,12 +45,18 @@ public class PlayerController : MonoBehaviour
         float deltaX = 0f;
         float deltaY = 0f;
 
-        // Mouse (PC / Unity Remote también lo usa)
-        deltaX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        deltaY = Input.GetAxis("Mouse Y") * mouseSensitivity;
-
-        // Touch (Mobile) — solo lado derecho de la pantalla
-        HandleTouchCamera(ref deltaX, ref deltaY);
+        // Si hay toques activos (incluye Unity Remote), usar touch para cámara.
+        // Si no hay toques, usar mouse.
+        //if (Input.touchSupported && Input.touchCount > 0)
+        if (Input.touchCount > 0)
+        {
+            HandleTouchCamera(ref deltaX, ref deltaY);
+        }
+        else
+        {
+            deltaX = Input.GetAxis("Mouse X") * mouseSensitivity;
+            deltaY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        }
 
         yaw += deltaX;
         pitch -= deltaY;
@@ -112,7 +121,9 @@ public class PlayerController : MonoBehaviour
             if (touch.phase == TouchPhase.Began)
             {
                 // Si el finger empieza en el lado derecho y no hay otro finger de cámara
-                if (touch.position.x > halfScreen && cameraFingerId == -1)
+                if (touch.position.x > halfScreen &&
+                    cameraFingerId == -1 &&
+                    !IsTouchOverJoystick(touch.position))
                 {
                     cameraFingerId = touch.fingerId;
                     lastTouchPosition = touch.position;
@@ -131,5 +142,26 @@ public class PlayerController : MonoBehaviour
                 cameraFingerId = -1;
             }
         }
+
+        if (Input.touchCount == 0)
+            cameraFingerId = -1;
+    }
+
+    bool IsTouchOverJoystick(Vector2 screenPosition)
+    {
+        if (joystick == null || joystick.joystickBackground == null)
+            return false;
+
+        Canvas canvas = joystick.joystickBackground.GetComponentInParent<Canvas>();
+        Camera eventCamera = null;
+
+        if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            eventCamera = canvas.worldCamera;
+
+        return RectTransformUtility.RectangleContainsScreenPoint(
+            joystick.joystickBackground,
+            screenPosition,
+            eventCamera
+        );
     }
 }

@@ -1718,7 +1718,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -6352,7 +6352,7 @@ MonoBehaviour:
   tagCarneAcumulada: carneAcumulada
   tagTortillaConCarne: tortillaConCarne
   tagOrdenLista: ordenLista
-  distanciaDeteccionDrop: 1
+  distanciaDeteccionDrop: 2
 --- !u!1 &842616339
 GameObject:
   m_ObjectHideFlags: 0
@@ -9480,7 +9480,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51e933317bba09e4fa9d71be8934de06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Presionar
-  cameraReferencia: {fileID: 1209005493}
 --- !u!1 &1252161902
 GameObject:
   m_ObjectHideFlags: 0
@@ -12046,11 +12045,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1998671555681288465, guid: f37e33cff9632874b9cf19b6f8f4e03c, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.58
+      value: 2.852
       objectReference: {fileID: 0}
     - target: {fileID: 1998671555681288465, guid: f37e33cff9632874b9cf19b6f8f4e03c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -27.87
+      value: -25.752
       objectReference: {fileID: 0}
     - target: {fileID: 1998671555681288465, guid: f37e33cff9632874b9cf19b6f8f4e03c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -16055,7 +16054,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
