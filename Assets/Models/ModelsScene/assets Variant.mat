@@ -55,6 +55,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _BUILTIN_QueueControl: 1
-    m_Colors: []
+    m_Colors:
+    - baseColorFactor: {r: 0.6431481, g: 0.5298594, b: 0.764151, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
