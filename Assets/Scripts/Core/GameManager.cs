@@ -1,26 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// GameManager — Orquestador principal de Don Paco Taco.
-///
-/// FLUJO DEL JUEGO:
-///
-///   MainMenu
-///      ↓
-///   StartDay   ← muestra número de día y dinero disponible
-///      ↓
-///   Playing    ← FASE ACTIVA: clientes llegan, el jugador cocina y entrega
-///      ↓
-///   Results    ← resumen del día (ganancias, propinas, balance)
-///      ↓
-///   StartDay   ← repite para el siguiente día
-///
-///   Cada N días (diasPorSemana), después de Results, se inserta:
-///   CuotaDePiso ← cobro semanal del cartel (¿tienes suficiente?)
-///      → si no pagas, vuelves al inicio de la semana actual
-///
-/// </summary>
+
 public class GameManager : MonoBehaviour
 {
     [Header("Configuración de partida")]
@@ -134,17 +115,6 @@ public class GameManager : MonoBehaviour
     }
 
     // CAMBIO DE ESTADO
-
-    /// <summary>
-    /// Cambia la fase del juego y notifica a todos los sistemas suscritos.
-    ///
-    /// ¿Quién llama a este método?
-    ///   - UIManager        → "Jugar" en el menú          → ChangeState(StartDay)
-    ///   - DayCycleManager  → timer del día expira         → ChangeState(Results)
-    ///   - ResultsScreen    → "Continuar"                  → AdvanceToNextState()
-    ///   - CuotaDePiso      → cobro completado             → ChangeState(StartDay)
-    ///   - CuotaDePiso      → 3 semanas sin pagar          → ChangeState(GameOver)
-    /// </summary>
     public void ChangeState(GameState newState)
     {
         if (CurrentState == newState)
@@ -260,12 +230,16 @@ public class GameManager : MonoBehaviour
     {
         if (CurrentState == GameState.GameOver) return;
 
-        Debug.Log($"[GameManager] Turno terminado | Día reportado: {diaTurno} | Día global: {CurrentDay} | Semana: {CurrentWeek} | Día en semana: {DayInWeek}/{DaysPerWeek} | Pagos: {pagosRecibidos} | Timeouts: {timeouts}");
+        Debug.Log($"[GameManager] Turno terminado | Pagos: {pagosRecibidos} | Timeouts: {timeouts}");
 
         if (CurrentState != GameState.Results)
-            ChangeState(GameState.Results);
+            StartCoroutine(EsperarYMostrarResultados());
+    }
 
-        Debug.Log($"[GameManager][DEBUG] Presiona {teclaSiguienteDia} para avanzar al siguiente día.");
+    private System.Collections.IEnumerator EsperarYMostrarResultados()
+    {
+        yield return new WaitForSeconds(5f);
+        ChangeState(GameState.Results);
     }
 
     private void RecargarEscenaDelDiaActual()

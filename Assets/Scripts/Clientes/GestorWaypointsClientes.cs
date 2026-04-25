@@ -44,6 +44,8 @@ public class GestorWaypointsClientes : MonoBehaviour
     private float _timerSpawn = 0f;
     private int _spawneados = 0;
 
+    private bool _ultimoEstadoEsperando = false;
+
     // EVENTOS
 
     /// <summary>Se disparó un nuevo cliente. GestorClientes escucha esto.</summary>
@@ -55,23 +57,57 @@ public class GestorWaypointsClientes : MonoBehaviour
     {
         _timerSpawn = intervaloSpawn;
         _spawneados = 0;
+        Debug.Log($"[GestorWaypoints] Start() ejecutado. GameObject: {gameObject.name}, activo: {gameObject.activeInHierarchy}, prefab: {(prefabCliente != null ? prefabCliente.name : "NULL")}, puntoSpawn: {(puntoSpawn != null ? puntoSpawn.name : "NULL")}");
     }
 
     private void Update()
     {
-        if (!autoSpawn) return;
-        if (prefabCliente == null || puntoSpawn == null) return;
+        if (!autoSpawn)
+        {
+            // Si estábamos esperando y se apagó el spawn, resetear el flag
+            _ultimoEstadoEsperando = false;
+            return;
+        }
+
+        if (prefabCliente == null)
+        {
+            Debug.LogWarning("[GestorWaypoints] prefabCliente no asignado en Inspector.");
+            return;
+        }
+        if (puntoSpawn == null)
+        {
+            Debug.LogWarning("[GestorWaypoints] puntoSpawn no asignado en Inspector.");
+            return;
+        }
 
         // ¿Se alcanzó el límite del día?
         if (limiteSpawn > 0 && _spawneados >= limiteSpawn) return;
 
         // ¿Hay demasiados clientes activos?
-        if (ContarClientesActivos() >= maxClientesActivos) return;
+        int activos = ContarClientesActivos();
+        if (activos >= maxClientesActivos)
+        {
+            // Solo logear cuando ENTRAMOS al estado "esperando" (flanco), no cada frame
+            if (!_ultimoEstadoEsperando)
+            {
+                Debug.Log($"[GestorWaypoints] Cupo lleno. Esperando a que se vaya un cliente. ({activos}/{maxClientesActivos})");
+                _ultimoEstadoEsperando = true;
+            }
+            return;
+        }
+
+        // Si salimos del estado "esperando" (se fue un cliente, hay cupo otra vez), logear la transición
+        if (_ultimoEstadoEsperando)
+        {
+            Debug.Log($"[GestorWaypoints] Cupo libre nuevamente. Preparando siguiente spawn.");
+            _ultimoEstadoEsperando = false;
+        }
 
         _timerSpawn -= Time.deltaTime;
         if (_timerSpawn > 0f) return;
 
         _timerSpawn = intervaloSpawn;
+        Debug.Log($"[GestorWaypoints] Spawn disparado. Total spawneados: {_spawneados + 1}/{limiteSpawn}");
         SpawnCliente();
     }
 

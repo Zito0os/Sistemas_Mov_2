@@ -28,6 +28,8 @@ public class GestorEconomia : MonoBehaviour
     
     public static event System.Action<int> OnMoneyChanged;
 
+    public int IngresosDia => ingresosAcumulados;
+
     private void Awake()
     {
         if (Instancia != null && Instancia != this)

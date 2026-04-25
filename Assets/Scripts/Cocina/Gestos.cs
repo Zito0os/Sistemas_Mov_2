@@ -380,6 +380,7 @@ public class Gestos : MonoBehaviour
         if (playerController != null)
         {
             playerController.enabled = true;
+            playerController.SincronizarRotacion();
 
             if (velocidadOriginalGuardada)
             {
@@ -388,11 +389,16 @@ public class Gestos : MonoBehaviour
             }
         }
 
+        if (playerController != null)
+        {
+            playerController.AplicarRotacionForzada(
+                playerController.transform.eulerAngles.y,
+                0f  // pitch neutro al salir
+            );
+        }
+
         if (cameraController == null && camaraApuntado != null)
             cameraController = camaraApuntado.GetComponent<CameraController>();
-
-        if (cameraController != null)
-            cameraController.enabled = false;
 
         if (trompoPanel != null)
             trompoPanel.SetActive(false);

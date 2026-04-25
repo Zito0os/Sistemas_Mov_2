@@ -69,7 +69,7 @@ public class Orden
     /// Genera un pedido aleatorio escalado al día actual.
     ///
     /// Días 1-3:  solo Pastor, 1 topping, paciencia larga, precio bajo
-    /// Días 4-7:  Pastor o Bisteck, 1-2 toppings, paciencia media
+    /// Días 4-7:  Pastor o Picadillo, 1-2 toppings, paciencia media
     /// Días 8+:   cualquier carne desbloqueada, 2-3 toppings, paciencia corta
     /// </summary>
     public static Orden GenerarAleatoria(int diaActual)
@@ -92,7 +92,7 @@ public class Orden
         }
         else if (dia >= 4)
         {
-            // Pastor y Bisteck
+            // Pastor y Picadillo
             return (TipoCarne)Random.Range(0, 2);
         }
         else

@@ -85,7 +85,7 @@ public class GestorClientes : MonoBehaviour
         }
 
         // Desactivar spawn hasta que empiece el turno
-        gestorWaypoints.autoSpawn = false;
+        //gestorWaypoints.autoSpawn = false; linea comentada por que el gamemaneger corre primero e incia el turno automaticamente, pero despues el gestor clinetes apaga el spawn
 
         if (GameManager.Instance != null)
         {
