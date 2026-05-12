@@ -87,6 +87,7 @@ public class GameManager : MonoBehaviour
         OnDayChanged?.Invoke(CurrentDay);
 
         ChangeState(iniciarEnMainMenu ? GameState.MainMenu : GameState.StartDay);
+        Debug.Log($"Resolución: {Screen.width}x{Screen.height}, Aspect: {(float)Screen.width/Screen.height}");
     }
 
     private void OnEnable()
