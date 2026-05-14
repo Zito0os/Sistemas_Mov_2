@@ -17,6 +17,7 @@ using UnityEngine;
 public class ClienteIA : MonoBehaviour
 {
     // ENUM DE ESTADOS
+    public Animator animator;
 
     public enum EstadoCliente
     {
@@ -96,7 +97,9 @@ public class ClienteIA : MonoBehaviour
                 break;
 
             case EstadoCliente.EsperandoComida:
+                
                 ActualizarPaciencia();
+                animator.SetBool("Esperando", true);
                 break;
         }
     }
