@@ -5,18 +5,21 @@ using UnityEngine;
 /// ClienteIA — Controla el comportamiento de un cliente individual.
 ///
 /// Estados:
-///   Caminando → Esperando → Ordenando → EsperandoComida → Saliendo
+///   Caminando → Ordenando → EsperandoComida → Saliendo
 ///
 /// Flujo:
 ///   1. Aparece en el punto de spawn
 ///   2. Camina por los waypoints hasta el mostrador
 ///   3. Genera una orden y espera con un timer de paciencia
-///   4. Recibe el taco → evalúa → paga → se va
+///   4. Recibe el taco → evalúa → paga → se va caminando
 ///   5. Si se acaba el tiempo → se va enojado sin pagar
+///
+/// Animaciones:
+///   Esperando = false → Walking
+///   Esperando = true  → Idle (esperando en el mostrador)
 /// </summary>
 public class ClienteIA : MonoBehaviour
 {
-    // ENUM DE ESTADOS
     public Animator animator;
 
     public enum EstadoCliente
@@ -28,8 +31,6 @@ public class ClienteIA : MonoBehaviour
         Saliendo
     }
 
-    // INSPECTOR — Movimiento
-
     [Header("Movimiento")]
     [Tooltip("Puntos que el cliente sigue en orden hasta llegar al mostrador")]
     public Transform[] puntosDeRuta;
@@ -40,13 +41,9 @@ public class ClienteIA : MonoBehaviour
     [Tooltip("Distancia mínima para considerar que llegó a un waypoint")]
     public float distanciaLlegada = 0.2f;
 
-    // INSPECTOR — Punto de salida
-
     [Header("Salida")]
     [Tooltip("Waypoints que recorre al salir (enojado o satisfecho)")]
     public Transform[] puntosSalida;
-
-    // INSPECTOR — Día actual (para generar orden)
 
     [Header("Juego")]
     [Tooltip("Día actual. GestorClientes lo asigna al hacer spawn.")]
@@ -56,7 +53,6 @@ public class ClienteIA : MonoBehaviour
 
     public EstadoCliente Estado { get; private set; } = EstadoCliente.Caminando;
 
-    /// <summary>La orden generada por este cliente. Pública para que SistemaOrdenes la lea.</summary>
     public Orden OrdenActual { get; private set; }
 
     private int _indiceWaypoint = 0;
@@ -65,13 +61,8 @@ public class ClienteIA : MonoBehaviour
 
     // EVENTOS
 
-    /// <summary>El cliente llegó al mostrador y generó su orden.</summary>
     public static event System.Action<ClienteIA, Orden> alGenerarOrden;
-
-    /// <summary>El cliente se fue (bool = pagó o no).</summary>
     public static event System.Action<ClienteIA, bool> alIrseCliente;
-
-    /// <summary>Proporción de tiempo restante (0 a 1). Para actualizar la barra de paciencia en UI.</summary>
     public static event System.Action<ClienteIA, float> alActualizarPaciencia;
 
     // INICIO
@@ -81,6 +72,9 @@ public class ClienteIA : MonoBehaviour
         AsignarWaypointsSiFaltan();
         _indiceWaypoint = 0;
         CambiarEstado(EstadoCliente.Caminando);
+
+        // Asegurarse de arrancar en walking
+        ActualizarAnimacion(false);
     }
 
     // UPDATE
@@ -97,9 +91,7 @@ public class ClienteIA : MonoBehaviour
                 break;
 
             case EstadoCliente.EsperandoComida:
-                
                 ActualizarPaciencia();
-                animator.SetBool("Esperando", true);
                 break;
         }
     }
@@ -124,18 +116,15 @@ public class ClienteIA : MonoBehaviour
             velocidad * Time.deltaTime
         );
 
-        // Rotar hacia el destino
         Vector3 direccion = (destino.position - transform.position).normalized;
         if (direccion != Vector3.zero)
             transform.forward = Vector3.Lerp(transform.forward, direccion, 10f * Time.deltaTime);
 
-        // ¿Llegó al waypoint?
         if (Vector3.Distance(transform.position, destino.position) <= distanciaLlegada)
         {
             transform.position = destino.position;
             _indiceWaypoint++;
 
-            // ¿Era el último waypoint? → llegó al mostrador
             if (_indiceWaypoint >= puntosDeRuta.Length)
                 LlegarAlMostrador();
         }
@@ -145,7 +134,6 @@ public class ClienteIA : MonoBehaviour
     {
         CambiarEstado(EstadoCliente.Ordenando);
 
-        // Genera la orden y notifica al SistemaOrdenes y a la UI
         OrdenActual = Orden.GenerarAleatoria(diaActual);
         _timerPaciencia = OrdenActual.TiempoDePaciencia;
 
@@ -153,6 +141,9 @@ public class ClienteIA : MonoBehaviour
         alGenerarOrden?.Invoke(this, OrdenActual);
 
         CambiarEstado(EstadoCliente.EsperandoComida);
+
+        // Activar idle al llegar al mostrador
+        ActualizarAnimacion(true);
     }
 
     private void ActualizarPaciencia()
@@ -162,7 +153,6 @@ public class ClienteIA : MonoBehaviour
         float proporcion = Mathf.Clamp01(_timerPaciencia / OrdenActual.TiempoDePaciencia);
         alActualizarPaciencia?.Invoke(this, proporcion);
 
-        // Se acabó la paciencia → se va sin pagar
         if (_timerPaciencia <= 0f)
         {
             Debug.Log($"[ClienteIA] {gameObject.name} se fue enojado (timeout).");
@@ -170,11 +160,21 @@ public class ClienteIA : MonoBehaviour
         }
     }
 
-    // API PÚBLICA
+    // ANIMACIÓN
 
     /// <summary>
-    /// Llamado por SistemaOrdenes cuando el jugador entrega un taco.
+    /// Centraliza todos los cambios de animación.
+    /// esperando = true  → Idle (parado en el mostrador)
+    /// esperando = false → Walking (caminando hacia o desde el puesto)
     /// </summary>
+    private void ActualizarAnimacion(bool esperando)
+    {
+        if (animator == null) return;
+        animator.SetBool("Esperando", esperando);
+    }
+
+    // API PÚBLICA
+
     public void RecibirTaco(Orden.TipoCarne carneEntregada,
                             System.Collections.Generic.List<Orden.TipoTopping> toppingsEntregados,
                             bool tieneTortilla)
@@ -190,10 +190,6 @@ public class ClienteIA : MonoBehaviour
         IrseDelPuesto(pago: correcto);
     }
 
-    /// <summary>
-    /// Devuelve qué proporción del tiempo de paciencia ya se usó (0 = recién ordenó, 1 = timeout).
-    /// Usado por SistemaOrdenes para calcular la propina.
-    /// </summary>
     public float ObtenerProporcionTiempoUsado()
     {
         if (OrdenActual == null) return 1f;
@@ -206,6 +202,10 @@ public class ClienteIA : MonoBehaviour
     private void IrseDelPuesto(bool pago)
     {
         CambiarEstado(EstadoCliente.Saliendo);
+
+        // Volver a walking para la animación de salida
+        ActualizarAnimacion(false);
+
         alIrseCliente?.Invoke(this, pago);
         StartCoroutine(CaminarHastaSalida());
     }
@@ -248,7 +248,7 @@ public class ClienteIA : MonoBehaviour
         Destroy(gameObject);
     }
 
-    // HELPER
+    // HELPERS
 
     private void CambiarEstado(EstadoCliente nuevoEstado)
     {
