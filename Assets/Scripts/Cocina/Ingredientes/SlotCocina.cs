@@ -43,8 +43,8 @@ public class SlotCocina : MonoBehaviour
     [SerializeField] private bool estaCocido = false;
     [SerializeField] private int etapaTortilla = 0;
     [SerializeField] private IngredienteCocina carneActualEnTortilla = IngredienteCocina.Ninguno;
-    // 0 = sin tortilla, 1 = lado 1 cocinandose, 2 = lista para voltear,
-    // 3 = lado 2 cocinandose, 4 = cocida.
+    // etapaTortilla: 0=sin tortilla, 1=lado1 cocinandose, 2=lista para voltear,
+    //               3=lado2 cocinandose, 4=cocida
 
     private Coroutine coccionCoroutine;
     private Coroutine volteoCoroutine;
@@ -61,78 +61,80 @@ public class SlotCocina : MonoBehaviour
         if (tortillaTacoVisual == null)
         {
             Transform visual = transform.Find(nombreVisualTortilla);
-            if (visual != null)
-                tortillaTacoVisual = visual.gameObject;
+            if (visual != null) tortillaTacoVisual = visual.gameObject;
         }
 
         if (pastorModelVisual == null)
         {
             Transform visual = transform.Find(nombrePastorModel);
-            if (visual != null)
-                pastorModelVisual = visual.gameObject;
+            if (visual != null) pastorModelVisual = visual.gameObject;
         }
 
         if (picadilloModelVisual == null)
         {
             Transform visual = transform.Find(nombrePicadilloModel);
-            if (visual != null)
-                picadilloModelVisual = visual.gameObject;
+            if (visual != null) picadilloModelVisual = visual.gameObject;
         }
 
         if (desebradaModelVisual == null)
         {
             Transform visual = transform.Find(nombreDesebradaModel);
-            if (visual != null)
-                desebradaModelVisual = visual.gameObject;
+            if (visual != null) desebradaModelVisual = visual.gameObject;
         }
 
         if (tacoHechoVisual == null)
         {
             Transform visual = transform.Find(nombreTacoHecho);
-            if (visual != null)
-                tacoHechoVisual = visual.gameObject;
+            if (visual != null) tacoHechoVisual = visual.gameObject;
         }
 
         ActualizarVisualesIngredientes();
     }
 
+    // ─── PUNTO DE ENTRADA PRINCIPAL (llamado por Gestos.cs al tocar el slot) ──
+
     public void InteractuarConSlot()
     {
         CookingStation station = CookingStation.Instance;
-        if (station == null)
-            return;
+        if (station == null) return;
 
+        // Slot vacío → intentar depositar lo que traes en mano
         if (ingredienteActual == IngredienteCocina.Ninguno)
         {
             IntentarColocarIngrediente(station);
             return;
         }
 
-        // Tortilla cocida (etapa 4) no usa toque; solo permite flujo de drag and drop.
+        // Tortilla cocida (etapa 4) → solo drag and drop de carne, no toque directo
         if (ingredienteActual == IngredienteCocina.Tortilla && etapaTortilla == 4)
             return;
 
-        // La tortilla cocinada ya no se puede recoger manualmente.
+        // Carne cocida → retirar al tocarlo (devuelve la mano libre)
         if (estaCocido && ingredienteActual != IngredienteCocina.Tortilla)
+        {
             RetirarIngredienteCocido(station);
+            return;
+        }
 
+        // Tortilla esperando volteo → procesar doble tap
         if (ingredienteActual == IngredienteCocina.Tortilla && carneActualEnTortilla == IngredienteCocina.Ninguno)
             ProcesarTapTortilla();
     }
 
+    // ─── COLOCAR INGREDIENTE EN SLOT ─────────────────────────────────────────
+
     private void IntentarColocarIngrediente(CookingStation station)
     {
-        IngredienteCocina seleccionado = station.ObtenerIngredienteSeleccionado();
-        if (seleccionado == IngredienteCocina.Ninguno)
-            return;
+        // Leer qué trae el jugador en la mano
+        IngredienteCocina enMano = station.ObtenerIngredienteSeleccionado();
+        if (enMano == IngredienteCocina.Ninguno) return;
 
-        if (!PuedeRecibir(seleccionado))
-            return;
+        if (!PuedeRecibir(enMano)) return;
 
-        if (!station.ConsumirIngredienteCrudo(seleccionado, 1))
-            return;
+        // Soltar el ingrediente de la mano y colocarlo en el slot
+        station.SoltarIngrediente();
 
-        ingredienteActual = seleccionado;
+        ingredienteActual = enMano;
         estaCocido = false;
         etapaTortilla = 0;
         ultimoTapTortillaTiempo = -10f;
@@ -151,6 +153,8 @@ public class SlotCocina : MonoBehaviour
         coccionCoroutine = StartCoroutine(CocinarConTiempo());
     }
 
+    // ─── COCCIÓN ─────────────────────────────────────────────────────────────
+
     private IEnumerator CocinarConTiempo()
     {
         yield return new WaitForSeconds(tiempoCoccion);
@@ -158,38 +162,9 @@ public class SlotCocina : MonoBehaviour
         coccionCoroutine = null;
     }
 
-    private void RetirarIngredienteCocido(CookingStation station)
-    {
-        station.AgregarIngredienteCocido(ingredienteActual, 1);
-        LimpiarSlot();
-    }
-
-    private void LimpiarSlot()
-    {
-        if (coccionCoroutine != null)
-        {
-            StopCoroutine(coccionCoroutine);
-            coccionCoroutine = null;
-        }
-
-        if (volteoCoroutine != null)
-        {
-            StopCoroutine(volteoCoroutine);
-            volteoCoroutine = null;
-        }
-
-        ingredienteActual = IngredienteCocina.Ninguno;
-        carneActualEnTortilla = IngredienteCocina.Ninguno;
-        estaCocido = false;
-        etapaTortilla = 0;
-        ultimoTapTortillaTiempo = -10f;
-        ActualizarVisualesIngredientes();
-    }
-
     private IEnumerator CocinarLadoUnoTortilla()
     {
         yield return new WaitForSeconds(tiempoCoccionPorLadoTortilla);
-
         etapaTortilla = 2;
         coccionCoroutine = null;
     }
@@ -197,19 +172,25 @@ public class SlotCocina : MonoBehaviour
     private IEnumerator CocinarLadoDosTortilla()
     {
         yield return new WaitForSeconds(tiempoCoccionPorLadoTortilla);
-
         etapaTortilla = 4;
         estaCocido = true;
         coccionCoroutine = null;
     }
 
+    // ─── RETIRAR COCIDO ──────────────────────────────────────────────────────
+
+    private void RetirarIngredienteCocido(CookingStation station)
+    {
+        station.AgregarIngredienteCocido(ingredienteActual, 1);
+        LimpiarSlot();
+    }
+
+    // ─── TORTILLA VOLTEO ─────────────────────────────────────────────────────
+
     private void ProcesarTapTortilla()
     {
-        if (estaCocido || etapaTortilla != 2)
-            return;
-
-        if (volteoCoroutine != null)
-            return;
+        if (estaCocido || etapaTortilla != 2) return;
+        if (volteoCoroutine != null) return;
 
         float ahora = Time.time;
         if (ahora - ultimoTapTortillaTiempo <= ventanaDobleTapTortilla)
@@ -218,7 +199,6 @@ public class SlotCocina : MonoBehaviour
             volteoCoroutine = StartCoroutine(VoltearTortillaYContinuar());
             return;
         }
-
         ultimoTapTortillaTiempo = ahora;
     }
 
@@ -232,22 +212,37 @@ public class SlotCocina : MonoBehaviour
         {
             tiempo += Time.deltaTime;
             float t = duracionVolteoTortilla <= 0f ? 1f : Mathf.Clamp01(tiempo / duracionVolteoTortilla);
-            float angulo = 360f * t;
-            objetivoVolteo.localRotation = rotacionInicial * Quaternion.Euler(angulo, 0f, 0f);
+            objetivoVolteo.localRotation = rotacionInicial * Quaternion.Euler(360f * t, 0f, 0f);
             yield return null;
         }
 
         objetivoVolteo.localRotation = rotacionInicial;
-
         etapaTortilla = 3;
         volteoCoroutine = null;
         coccionCoroutine = StartCoroutine(CocinarLadoDosTortilla());
     }
 
+    // ─── LIMPIAR ─────────────────────────────────────────────────────────────
+
+    private void LimpiarSlot()
+    {
+        if (coccionCoroutine != null) { StopCoroutine(coccionCoroutine); coccionCoroutine = null; }
+        if (volteoCoroutine != null)  { StopCoroutine(volteoCoroutine);  volteoCoroutine  = null; }
+
+        ingredienteActual       = IngredienteCocina.Ninguno;
+        carneActualEnTortilla   = IngredienteCocina.Ninguno;
+        estaCocido              = false;
+        etapaTortilla           = 0;
+        ultimoTapTortillaTiempo = -10f;
+        ActualizarVisualesIngredientes();
+    }
+
+    // ─── VISUALES ─────────────────────────────────────────────────────────────
+
     private void ActualizarVisualesIngredientes()
     {
-        bool esTortilla = ingredienteActual == IngredienteCocina.Tortilla;
-        bool tieneTacoHecho = esTortilla && carneActualEnTortilla != IngredienteCocina.Ninguno;
+        bool esTortilla      = ingredienteActual == IngredienteCocina.Tortilla;
+        bool tieneTacoHecho  = esTortilla && carneActualEnTortilla != IngredienteCocina.Ninguno;
 
         if (tortillaTacoVisual != null)
             tortillaTacoVisual.SetActive(esTortilla && !tieneTacoHecho);
@@ -255,19 +250,16 @@ public class SlotCocina : MonoBehaviour
         if (tacoHechoVisual != null)
             tacoHechoVisual.SetActive(tieneTacoHecho);
 
-        // Refuerzo visual: nunca mostrar la tortilla base cuando el taco hecho esta activo.
+        // Nunca mostrar tortilla base si el taco hecho está activo
         if (tortillaTacoVisual != null && tacoHechoVisual != null && tacoHechoVisual.activeSelf)
             tortillaTacoVisual.SetActive(false);
 
-        if (pastorModelVisual != null)
-            pastorModelVisual.SetActive(ingredienteActual == IngredienteCocina.Pastor);
-
-        if (picadilloModelVisual != null)
-            picadilloModelVisual.SetActive(ingredienteActual == IngredienteCocina.Picadillo);
-
-        if (desebradaModelVisual != null)
-            desebradaModelVisual.SetActive(ingredienteActual == IngredienteCocina.Desebrada);
+        if (pastorModelVisual   != null) pastorModelVisual.SetActive(ingredienteActual == IngredienteCocina.Pastor);
+        if (picadilloModelVisual!= null) picadilloModelVisual.SetActive(ingredienteActual == IngredienteCocina.Picadillo);
+        if (desebradaModelVisual!= null) desebradaModelVisual.SetActive(ingredienteActual == IngredienteCocina.Desebrada);
     }
+
+    // ─── RESTRICCIONES ───────────────────────────────────────────────────────
 
     private bool PuedeRecibir(IngredienteCocina ingrediente)
     {
@@ -275,42 +267,34 @@ public class SlotCocina : MonoBehaviour
         {
             case RestriccionSlot.SoloCarne:
                 return ingrediente != IngredienteCocina.Tortilla;
-
             case RestriccionSlot.SoloTortilla:
                 return ingrediente == IngredienteCocina.Tortilla;
-
             case RestriccionSlot.CarneYTortilla:
                 return ingrediente != IngredienteCocina.Ninguno;
-
             case RestriccionSlot.AutoPorNumero:
             default:
                 if (numeroSlot >= 13 && numeroSlot <= 16)
                     return ingrediente == IngredienteCocina.Tortilla;
-
                 return ingrediente != IngredienteCocina.Tortilla && ingrediente != IngredienteCocina.Ninguno;
         }
     }
 
     private int ExtraerNumeroSlot(string nombre, int valorPorDefecto)
     {
-        if (string.IsNullOrWhiteSpace(nombre))
-            return valorPorDefecto;
-
+        if (string.IsNullOrWhiteSpace(nombre)) return valorPorDefecto;
         int ultimoGuion = nombre.LastIndexOf('_');
-        if (ultimoGuion < 0 || ultimoGuion >= nombre.Length - 1)
-            return valorPorDefecto;
-
+        if (ultimoGuion < 0 || ultimoGuion >= nombre.Length - 1) return valorPorDefecto;
         string posibleNumero = nombre.Substring(ultimoGuion + 1);
-        if (int.TryParse(posibleNumero, out int numero))
-            return numero;
-
-        return valorPorDefecto;
+        return int.TryParse(posibleNumero, out int numero) ? numero : valorPorDefecto;
     }
 
-    // Metodos para drag y drop de carnes
+    // ─── API PÚBLICA PARA DRAG AND DROP ────────────────────────
+
     public bool PuedeLlevarCarne()
     {
-        return ingredienteActual == IngredienteCocina.Tortilla && etapaTortilla == 4 && carneActualEnTortilla == IngredienteCocina.Ninguno;
+        return ingredienteActual == IngredienteCocina.Tortilla
+            && etapaTortilla == 4
+            && carneActualEnTortilla == IngredienteCocina.Ninguno;
     }
 
     public void RecibirCarne(IngredienteCocina tipoCarne)
@@ -319,25 +303,21 @@ public class SlotCocina : MonoBehaviour
             return;
 
         carneActualEnTortilla = tipoCarne;
-        if (tortillaTacoVisual != null)
-            tortillaTacoVisual.SetActive(false);
-
+        if (tortillaTacoVisual != null) tortillaTacoVisual.SetActive(false);
         ActualizarVisualesIngredientes();
     }
 
-    public IngredienteCocina ObtenerCarneEnTortilla()
-    {
-        return carneActualEnTortilla;
-    }
+    public IngredienteCocina ObtenerCarneEnTortilla() => carneActualEnTortilla;
 
     public bool TieneTaco()
     {
-        return ingredienteActual == IngredienteCocina.Tortilla && carneActualEnTortilla != IngredienteCocina.Ninguno;
+        return ingredienteActual == IngredienteCocina.Tortilla
+            && carneActualEnTortilla != IngredienteCocina.Ninguno;
     }
 
     public void EliminarTaco()
     {
-        if (ingredienteActual == IngredienteCocina.Tortilla && carneActualEnTortilla != IngredienteCocina.Ninguno)
+        if (TieneTaco())
         {
             transform.position = posicionOriginal;
             LimpiarSlot();

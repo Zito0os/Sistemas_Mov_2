@@ -1,23 +1,6 @@
 using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// ClienteIA — Controla el comportamiento de un cliente individual.
-///
-/// Estados:
-///   Caminando → Ordenando → EsperandoComida → Saliendo
-///
-/// Flujo:
-///   1. Aparece en el punto de spawn
-///   2. Camina por los waypoints hasta el mostrador
-///   3. Genera una orden y espera con un timer de paciencia
-///   4. Recibe el taco → evalúa → paga → se va caminando
-///   5. Si se acaba el tiempo → se va enojado sin pagar
-///
-/// Animaciones:
-///   Esperando = false → Walking
-///   Esperando = true  → Idle (esperando en el mostrador)
-/// </summary>
 public class ClienteIA : MonoBehaviour
 {
     public Animator animator;

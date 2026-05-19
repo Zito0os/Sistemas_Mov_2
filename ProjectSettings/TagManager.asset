@@ -11,6 +11,10 @@ TagManager:
   - desebrada
   - trompo
   - slot
+  - cartelTurno
+  - tp_libre
+  - salsa
+  - ordenLista
   layers:
   - Default
   - TransparentFX

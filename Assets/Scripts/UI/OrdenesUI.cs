@@ -3,7 +3,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-
 public class OrdenesUI : MonoBehaviour
 {
     public static OrdenesUI Instance { get; private set; }
@@ -13,15 +12,14 @@ public class OrdenesUI : MonoBehaviour
     [SerializeField] private Transform contentCompletadas;
 
     [Header("Prefabs de fila")]
-    [Tooltip("Prefab simple: un GameObject con TextMeshProUGUI")]
     [SerializeField] private GameObject prefabFilaActiva;
     [SerializeField] private GameObject prefabFilaCompletada;
 
     [Header("Texto vacío")]
-    [SerializeField] private string textoSinActivas    = "Sin órdenes activas";
+    [SerializeField] private string textoSinActivas     = "Sin órdenes activas";
     [SerializeField] private string textoSinCompletadas = "Sin órdenes completadas";
 
-    // Mapa clienteIA → fila activa instanciada (para moverla al completarse)
+    // Mapa clienteIA → fila activa instanciada (para destruirla cuando se complete)
     private Dictionary<ClienteIA, GameObject> _filasActivas = new();
 
     private void Awake()
@@ -34,73 +32,72 @@ public class OrdenesUI : MonoBehaviour
     {
         SistemaOrdenes.alRecibirOrden   += AlRecibirOrden;
         SistemaOrdenes.alCompletarOrden += AlCompletarOrden;
-        SistemaOrdenes.alCancelarOrden += AlCancelarOrden;
-
+        SistemaOrdenes.alCancelarOrden  += AlCancelarOrden;
     }
 
     private void OnDisable()
     {
         SistemaOrdenes.alRecibirOrden   -= AlRecibirOrden;
         SistemaOrdenes.alCompletarOrden -= AlCompletarOrden;
-        SistemaOrdenes.alCancelarOrden -= AlCancelarOrden;
-
+        SistemaOrdenes.alCancelarOrden  -= AlCancelarOrden;
     }
 
     // ── Eventos de órdenes ────────────────────────────────────────────────────
 
-    private void AlRecibirOrden(ClienteIA cliente, Orden orden)
+    private void AlRecibirOrden(ClienteIA cliente, Orden orden, int cantidadRequerida)
     {
         if (orden == null || contentActivas == null) return;
-
-        // Limpiar placeholder de "sin órdenes" si existe
         LimpiarPlaceholder(contentActivas);
 
         GameObject fila = prefabFilaActiva != null
             ? Instantiate(prefabFilaActiva, contentActivas)
             : CrearFilaDefecto(contentActivas);
 
-        TextMeshProUGUI tmp = fila.GetComponentInChildren<TextMeshProUGUI>();
-        if (tmp != null)
-            tmp.text = FormatearOrdenActiva(orden);
+        FilaOrdenUI filaUI = fila.GetComponent<FilaOrdenUI>();
+        if (filaUI != null)
+            filaUI.Inicializar(orden, cantidadRequerida);
+        else
+        {
+            // Fallback texto plano si no hay prefab con FilaOrdenUI
+            TextMeshProUGUI tmp = fila.GetComponentInChildren<TextMeshProUGUI>();
+            if (tmp != null) tmp.text = FormatearOrdenActiva(orden, cantidadRequerida);
+        }
 
-        // Guardar referencia para moverla cuando se complete
         _filasActivas[cliente] = fila;
-
         ActualizarPlaceholder(contentActivas, textoSinActivas);
     }
 
-    private void AlCompletarOrden(Orden orden, int pagoTotal, bool correcto)
+    private void AlCompletarOrden(Orden orden, int pagoTotal, bool correcto, int cantidadRequerida)
     {
-        // Buscar la fila activa correspondiente a esta orden
+        // — Buscar y destruir la fila activa correspondiente —
         ClienteIA clienteKey = null;
         GameObject filaActiva = null;
 
         foreach (var kv in _filasActivas)
         {
-            // La orden es la misma si el IDOrden coincide con alguna activa
-            // Comparamos por referencia directa (SistemaOrdenes nos pasa la misma instancia)
-            if (kv.Value != null)
+            if (kv.Value == null) continue;
+
+            // Buscar por IDOrden dentro del FilaOrdenUI o del TMP de fallback
+            FilaOrdenUI filaUI = kv.Value.GetComponent<FilaOrdenUI>();
+            bool coincide = filaUI != null
+                ? filaUI.TieneOrden(orden.IDOrden)
+                : kv.Value.GetComponentInChildren<TextMeshProUGUI>()?.text.Contains(orden.IDOrden) ?? false;
+
+            if (coincide)
             {
-                TextMeshProUGUI tmp = kv.Value.GetComponentInChildren<TextMeshProUGUI>();
-                if (tmp != null && tmp.text.Contains(orden.IDOrden))
-                {
-                    clienteKey = kv.Key;
-                    filaActiva = kv.Value;
-                    break;
-                }
+                clienteKey = kv.Key;
+                filaActiva = kv.Value;
+                break;
             }
         }
 
-
-        // Quitar de activas
         if (filaActiva != null)
         {
             Destroy(filaActiva);
-            if (clienteKey != null)
-                _filasActivas.Remove(clienteKey);
+            if (clienteKey != null) _filasActivas.Remove(clienteKey);
         }
 
-        // Agregar a completadas
+        // — Agregar a completadas —
         if (contentCompletadas != null)
         {
             LimpiarPlaceholder(contentCompletadas);
@@ -109,83 +106,98 @@ public class OrdenesUI : MonoBehaviour
                 ? Instantiate(prefabFilaCompletada, contentCompletadas)
                 : CrearFilaDefecto(contentCompletadas);
 
-            TextMeshProUGUI tmp = fila.GetComponentInChildren<TextMeshProUGUI>();
-            if (tmp != null)
-                tmp.text = FormatearOrdenCompletada(orden, pagoTotal, correcto);
-        }
-
-        ActualizarPlaceholder(contentActivas, textoSinActivas);
-        ActualizarPlaceholder(contentCompletadas, textoSinCompletadas);
-    }
-
-   private void AlCancelarOrden(Orden orden)
-    {
-        // Quitar de activas
-        foreach (var kv in _filasActivas)
-        {
-            if (kv.Value != null)
+            FilaOrdenCompletadaUI filaCompletadaUI = fila.GetComponent<FilaOrdenCompletadaUI>();
+            if (filaCompletadaUI != null)
+                filaCompletadaUI.InicializarCompletada(orden, cantidadRequerida, pagoTotal, correcto);
+            else
             {
-                TextMeshProUGUI tmp = kv.Value.GetComponentInChildren<TextMeshProUGUI>();
-                if (tmp != null && tmp.text.Contains(orden.IDOrden))
-                {
-                    Destroy(kv.Value);
-                    _filasActivas.Remove(kv.Key);
-                    break;
-                }
+                // Fallback texto plano
+                TextMeshProUGUI tmp = fila.GetComponentInChildren<TextMeshProUGUI>();
+                if (tmp != null) tmp.text = FormatearOrdenCompletada(orden, cantidadRequerida, pagoTotal, correcto);
             }
         }
 
-        // Agregar a completadas como no entregada
+        ActualizarPlaceholder(contentActivas,     textoSinActivas);
+        ActualizarPlaceholder(contentCompletadas, textoSinCompletadas);
+    }
+
+    private void AlCancelarOrden(Orden orden)
+    {
+        // — Buscar y destruir la fila activa —
+        foreach (var kv in _filasActivas)
+        {
+            if (kv.Value == null) continue;
+
+            FilaOrdenUI filaUI = kv.Value.GetComponent<FilaOrdenUI>();
+            bool coincide = filaUI != null
+                ? filaUI.TieneOrden(orden.IDOrden)
+                : kv.Value.GetComponentInChildren<TextMeshProUGUI>()?.text.Contains(orden.IDOrden) ?? false;
+
+            if (coincide)
+            {
+                Destroy(kv.Value);
+                _filasActivas.Remove(kv.Key);
+                break;
+            }
+        }
+
+        // — Agregar a completadas como cancelada —
         if (contentCompletadas != null)
         {
+            LimpiarPlaceholder(contentCompletadas);
+
             GameObject fila = prefabFilaCompletada != null
                 ? Instantiate(prefabFilaCompletada, contentCompletadas)
                 : CrearFilaDefecto(contentCompletadas);
 
-            TextMeshProUGUI tmp = fila.GetComponentInChildren<TextMeshProUGUI>();
-            if (tmp != null)
-                tmp.text = $"[{orden.IDOrden}] {NombreCarne(orden.Carne)}\n✗ No entregada  |  $0";
+            FilaOrdenCompletadaUI filaCompletadaUI = fila.GetComponent<FilaOrdenCompletadaUI>();
+            if (filaCompletadaUI != null)
+                filaCompletadaUI.InicializarCancelada(orden);
+            else
+            {
+                // Fallback texto plano
+                TextMeshProUGUI tmp = fila.GetComponentInChildren<TextMeshProUGUI>();
+                if (tmp != null)
+                    tmp.text = $"#{orden.IDOrden} — {NombreCarne(orden.Carne)}\n✗ Se fue el cliente | $0";
+            }
         }
 
-        ActualizarPlaceholder(contentActivas, textoSinActivas);
+        ActualizarPlaceholder(contentActivas,     textoSinActivas);
         ActualizarPlaceholder(contentCompletadas, textoSinCompletadas);
     }
-   
-    // ── Formato de texto ──────────────────────────────────────────────────────
 
-    private string FormatearOrdenActiva(Orden orden)
+    // ── Formato de texto (fallback sin prefab) ────────────────────────────────
+
+    private string FormatearOrdenActiva(Orden orden, int cantidad)
     {
         string toppings = orden.Toppings.Count > 0
             ? string.Join(", ", orden.Toppings)
             : "sin toppings";
 
-        return $"[{orden.IDOrden}] {NombreCarne(orden.Carne)}\n" +
-               $"{toppings}\n" +
-               $"Precio base: ${orden.PrecioBase}";
+        return $"#{orden.IDOrden}  x{cantidad}\n" +
+               $"{NombreCarne(orden.Carne)}\n" +
+               $"{toppings}";
     }
 
-    private string FormatearOrdenCompletada(Orden orden, int pagoTotal, bool correcto)
+    private string FormatearOrdenCompletada(Orden orden, int cantidad, int pagoTotal, bool correcto)
     {
         string estado = correcto ? "✓ Correcto" : "✗ Incorrecto";
-        return $"[{orden.IDOrden}] {NombreCarne(orden.Carne)}\n" +
-               $"{estado}  |  Cobrado: ${pagoTotal}";
+        return $"#{orden.IDOrden}  x{cantidad}\n" +
+               $"{NombreCarne(orden.Carne)}\n" +
+               $"{estado} | ${pagoTotal}";
     }
 
-    private string NombreCarne(Orden.TipoCarne carne)
+    private string NombreCarne(Orden.TipoCarne carne) => carne switch
     {
-        switch (carne)
-        {
-            case Orden.TipoCarne.Pastor:    return "Pastor";
-            case Orden.TipoCarne.Picadillo: return "Picadillo";
-            case Orden.TipoCarne.Trompo:    return "Trompo";
-            case Orden.TipoCarne.Desebrada: return "Desebrada";
-            default:                        return "Taco";
-        }
-    }
+        Orden.TipoCarne.Pastor    => "Pastor",
+        Orden.TipoCarne.Picadillo => "Picadillo",
+        Orden.TipoCarne.Trompo    => "Trompo",
+        Orden.TipoCarne.Desebrada => "Desebrada",
+        _                         => "Taco"
+    };
 
     // ── Helpers de layout ─────────────────────────────────────────────────────
 
-    /// <summary>Crea una fila mínima si no hay prefab asignado.</summary>
     private GameObject CrearFilaDefecto(Transform parent)
     {
         GameObject go = new GameObject("Fila");
@@ -193,7 +205,7 @@ public class OrdenesUI : MonoBehaviour
 
         TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
         tmp.fontSize = 24;
-        tmp.color = Color.white;
+        tmp.color    = Color.white;
 
         RectTransform rt = go.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(0, 80);
@@ -201,17 +213,12 @@ public class OrdenesUI : MonoBehaviour
         return go;
     }
 
-    /// <summary>
-    /// Si el Content no tiene hijos reales (solo el placeholder), muestra el texto vacío.
-    /// Si tiene hijos reales, oculta el placeholder.
-    /// </summary>
     private void ActualizarPlaceholder(Transform content, string textoVacio)
     {
         if (content == null) return;
 
-        // Contamos hijos que NO sean el placeholder
-        int hijosReales = 0;
         Transform placeholder = content.Find("Placeholder");
+        int hijosReales = 0;
 
         foreach (Transform hijo in content)
         {
@@ -219,13 +226,11 @@ public class OrdenesUI : MonoBehaviour
         }
 
         if (placeholder == null) return;
-
         placeholder.gameObject.SetActive(hijosReales == 0);
     }
 
-    /// <summary>Quita el placeholder si existe al agregar el primer elemento real.</summary>
     private void LimpiarPlaceholder(Transform content)
     {
-        // No lo destruimos, solo lo ocultamos — ActualizarPlaceholder lo maneja
+        // No destruimos el placeholder, ActualizarPlaceholder lo maneja
     }
 }

@@ -8,12 +8,15 @@ public class TP : MonoBehaviour
     public float distanciaMaxima = 8f;
     public LayerMask mascaraRaycast = ~0;
     public string tagTeleport = "tp";
+    public string tagTeleportLibre = "tp_libre";
 
     [Header("UI")]
     public Button trompoButton;
 
     [Header("Jugador")]
     public PlayerController playerController;
+    [Tooltip("Velocidad que se le asigna al jugador al llegar. 0 = queda inmovilizado (comportamiento original).")]
+    public float velocidadAlLlegar = 0f;
 
     private Transform destinoActual;
 
@@ -71,7 +74,7 @@ public class TP : MonoBehaviour
             return;
         }
 
-        if (!hit.collider.CompareTag(tagTeleport))
+        if (!hit.collider.CompareTag(tagTeleport) && !hit.collider.CompareTag(tagTeleportLibre))
         {
             MostrarBoton(false);
             return;
@@ -99,8 +102,8 @@ public class TP : MonoBehaviour
         if (playerController == null)
             return;
 
-        playerController.moveSpeed = 0f;
         playerController.transform.position = destinoActual.position;
+        playerController.moveSpeed = velocidadAlLlegar;
         MostrarBoton(false);
     }
 

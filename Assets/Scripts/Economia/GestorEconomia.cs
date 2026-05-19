@@ -75,7 +75,7 @@ public class GestorEconomia : MonoBehaviour
         NotificarCambioBalance();
     }
 
-    private void AlCompletarOrden(Orden orden, int pagoTotal, bool correcto)
+    private void AlCompletarOrden(Orden orden, int pagoTotal, bool correcto, int cantidadRequerida)
     {
         if (pagoTotal <= 0) return;
         AddMoney(pagoTotal);

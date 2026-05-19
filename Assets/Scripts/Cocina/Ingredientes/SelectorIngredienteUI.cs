@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class SelectorIngredienteUI : MonoBehaviour
 {
-    [Header("Referencia opcional")]
+   /* [Header("Referencia opcional")]
     public CookingStation cookingStation;
 
     private void Awake()
@@ -54,5 +54,5 @@ public class SelectorIngredienteUI : MonoBehaviour
     public void SeleccionarTortilla()
     {
         SeleccionarIngredientePorIndice(4);
-    }
+    } */
 }

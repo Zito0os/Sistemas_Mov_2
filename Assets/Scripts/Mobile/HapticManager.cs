@@ -1,24 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// HapticsManager — Maneja toda la vibración del dispositivo y los patrones predefinidos.
-///
-/// NO es un MonoBehaviour. Es una clase plana gestionada por MobileServices.
-/// Eso permite que su ciclo de vida (suscripciones / desuscripciones) lo controle el singleton.
-///
-/// Patrones de vibración:
-///   VibrarCorto()   ~50ms   → feedback ligero (cliente llega, click confirmado)
-///   VibrarMedio()   ~150ms  → confirmación (orden recibida, pago)
-///   VibrarLargo()   ~400ms  → alerta importante (orden cancelada, error)
-///   VibrarPatron()         → patrones custom Android (vibrar-pausar-vibrar)
-///
-/// Eventos del juego a los que se suscribe:
-///   - ClienteIA.alGenerarOrden         → corto (cliente llega y pide)
-///   - SistemaOrdenes.alCompletarOrden  → medio si correcto, largo si incorrecto
-///   - SistemaOrdenes.alCancelarOrden   → medio (timeout)
-///   - CuotaDePiso.OnResultadoCuota     → patrón largo si NO pagó (tensión)
-///   - GameManager.OnGameOver           → patrón final
-/// </summary>
 public class HapticsManager
 {
     // DURACIONES (en milisegundos, para uso con AndroidJavaObject)
@@ -97,7 +78,6 @@ public class HapticsManager
 
     // HANDLERS DE EVENTOS
 
-    /// <summary>Cliente llegó al mostrador y generó su pedido → vibración corta.</summary>
     private void AlGenerarOrden(ClienteIA cliente, Orden orden)
     {
         if (_logsActivos)
@@ -105,8 +85,7 @@ public class HapticsManager
         VibrarCorto();
     }
 
-    /// <summary>Orden completada — corto si correcto, largo si incorrecto.</summary>
-    private void AlCompletarOrden(Orden orden, int pagoTotal, bool correcto)
+    private void AlCompletarOrden(Orden orden, int pagoTotal, bool correcto, int cantidadRequerida)
     {
         if (correcto)
         {
@@ -122,7 +101,6 @@ public class HapticsManager
         }
     }
 
-    /// <summary>Orden cancelada por timeout (cliente se fue) → vibración media.</summary>
     private void AlCancelarOrden(Orden orden)
     {
         if (_logsActivos)
@@ -130,7 +108,6 @@ public class HapticsManager
         VibrarMedio();
     }
 
-    /// <summary>Resultado de cuota — patrón tenso si NO se pagó.</summary>
     private void AlResultadoCuota(bool pagada, int cuota, int balanceAntes, int balanceDespues, int semana)
     {
         if (pagada)
@@ -148,7 +125,6 @@ public class HapticsManager
         }
     }
 
-    /// <summary>Game over → patrón final largo.</summary>
     private void AlGameOver()
     {
         if (_logsActivos)
@@ -158,30 +134,21 @@ public class HapticsManager
 
     // API PÚBLICA DE VIBRACIÓN
 
-    /// <summary>Vibración corta (~50ms). Para feedback ligero.</summary>
     public void VibrarCorto()
     {
         EjecutarVibracion(DURACION_CORTA);
     }
 
-    /// <summary>Vibración media (~150ms). Para confirmaciones.</summary>
     public void VibrarMedio()
     {
         EjecutarVibracion(DURACION_MEDIA);
     }
 
-    /// <summary>Vibración larga (~400ms). Para alertas importantes.</summary>
     public void VibrarLargo()
     {
         EjecutarVibracion(DURACION_LARGA);
     }
 
-    /// <summary>
-    /// Vibración con patrón custom (solo Android).
-    /// El array sigue el formato Android: [pausa, vibrar, pausa, vibrar, ...]
-    /// Ejemplo: new long[] { 0, 200, 100, 200 } = vibrar 200ms, pausa 100ms, vibrar 200ms.
-    /// En plataformas no Android, se reemplaza por una vibración corta como fallback.
-    /// </summary>
     public void VibrarPatron(long[] patron)
     {
         if (!_services.VibracionActivada)
@@ -235,8 +202,7 @@ public class HapticsManager
         }
         else
         {
-            // Editor / iOS / standalone → vibración simple del sistema
-            // En el editor de Unity esto NO vibra nada (no hay hardware), pero no rompe.
+
             Handheld.Vibrate();
         }
     }

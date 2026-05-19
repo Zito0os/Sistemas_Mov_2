@@ -17,12 +17,20 @@ public class PlayerController : MonoBehaviour
     public float minPitch = -30f;
     public float maxPitch = 60f;
 
+    // Cuando true: Update sigue corriendo (collider activo, OnTriggerExit funciona)
+    // pero se ignora todo input de camara y movimiento.
+    public bool Bloqueado { get; private set; } = false;
+
     private float yaw = 0f;
     private float pitch = 0f;
 
     // Touch: guarda qué finger ID está controlando la cámara
     private int cameraFingerId = -1;
     private Vector2 lastTouchPosition;
+
+    // Frames de gracia al reactivarse: ignora input de cámara para que
+    // el dedo que presionó "Regresar" no sea secuestrado como cameraFingerId
+    private int _ignorarInputFrames = 0;
 
     // Set de fingerIds que están siendo usados por la UI (joystick u otros controles).
     // Se actualiza en cada Update y se respeta durante toda la vida del touch,
@@ -46,15 +54,15 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (Bloqueado) return;
+
         Transform cam = cameraTransform != null ? cameraTransform : Camera.main.transform;
 
         // --- CÁMARA ---
         float deltaX = 0f;
         float deltaY = 0f;
 
-        // Si hay toques activos (incluye Unity Remote), usar touch para cámara.
-        // Si no hay toques, usar mouse.
-        //if (Input.touchSupported && Input.touchCount > 0)
+        
         if (Input.touchCount > 0)
         {
             HandleTouchCamera(ref deltaX, ref deltaY);
@@ -120,18 +128,24 @@ public class PlayerController : MonoBehaviour
 
     void HandleTouchCamera(ref float deltaX, ref float deltaY)
     {
+        // Guard de frames de gracia: ignorar input los primeros frames tras reactivarse
+        if (_ignorarInputFrames > 0)
+        {
+            _ignorarInputFrames--;
+            // Limpiar cualquier finger que haya quedado registrado
+            cameraFingerId = -1;
+            _fingersUsadosPorUI.Clear();
+            return;
+        }
+
         float halfScreen = Screen.width * 0.5f;
 
-        // PASO 1: actualizar el set de fingers que la UI está usando.
-        // Esto se hace ANTES de procesar la cámara, en cada frame, para que
-        // el veto persista durante toda la vida del touch (no solo en Began).
+
         ActualizarFingersUsadosPorUI();
 
         foreach (Touch touch in Input.touches)
         {
-            // VETO PRINCIPAL: si la UI usa este finger, NUNCA es para cámara.
-            // Aplica en TODAS las fases (Began, Moved, Ended). Esto soluciona
-            // el bug de "el dedo del joystick cruza la mitad y mueve la cámara".
+            
             if (_fingersUsadosPorUI.Contains(touch.fingerId))
             {
                 // Si por alguna razón este dedo era el de la cámara, lo soltamos
@@ -172,13 +186,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Mantiene actualizado el set de fingerIds que están siendo usados por la UI
-    /// (joystick, botones, paneles). Una vez que un dedo es marcado como UI,
-    /// se queda así hasta que se levante. Esto es CRÍTICO porque sin esta
-    /// persistencia, un dedo del joystick que cruce al lado derecho durante
-    /// el drag empezaría a mover la cámara.
-    /// </summary>
+
     void ActualizarFingersUsadosPorUI()
     {
         if (EventSystem.current == null) return;
@@ -221,6 +229,25 @@ public class PlayerController : MonoBehaviour
         );
     }
 
+    public void Bloquear(bool bloquear)
+    {
+        Bloqueado = bloquear;
+        if (bloquear)
+        {
+            // En el Editor el cursor queda locked y no puede hacer click en UI.
+            // En APK no hay cursor, esta linea no tiene efecto.
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible   = true;
+        }
+        else
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible   = false;
+            SincronizarRotacion();
+            ResetearEstadoTouch(0);
+        }
+    }
+
     public void SincronizarRotacion()
     {
         yaw   = transform.eulerAngles.y;
@@ -231,5 +258,14 @@ public class PlayerController : MonoBehaviour
         // Convertir pitch de 0-360 a -180/180
         if (pitch > 180f) pitch -= 360f;
         pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+    }
+
+
+    public void ResetearEstadoTouch(int framesDeGracia = 3)
+    {
+        cameraFingerId = -1;
+        lastTouchPosition = Vector2.zero;
+        _fingersUsadosPorUI.Clear();
+        _ignorarInputFrames = framesDeGracia;
     }
 }

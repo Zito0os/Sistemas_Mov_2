@@ -53,6 +53,7 @@ public class UIManager : MonoBehaviour
                 break;
 
             case GameManager.GameState.StartDay:
+                Mostrar(hudPanel);
                 Mostrar(startDayPanel);
                 break;
 

@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class MenuPrincipal : MonoBehaviour
 {
@@ -14,8 +13,8 @@ public class MenuPrincipal : MonoBehaviour
     [SerializeField] private Button btn_salir;
 
     [Header("Opciones")]
-    [SerializeField] private Toggle  toggle_vibracion;
-    [SerializeField] private Button  btn_cerrar_opciones;
+    [SerializeField] private Toggle toggle_vibracion;
+    [SerializeField] private Button btn_cerrar_opciones;
 
     [Header("Nombre de la escena del juego")]
     [SerializeField] private string nombreEscenaJuego = "SampleScene";
@@ -45,7 +44,6 @@ public class MenuPrincipal : MonoBehaviour
         Mostrar(panelMenu);
         Ocultar(panelOpciones);
 
-        // Sincronizar toggle con preferencia guardada
         if (toggle_vibracion != null)
             toggle_vibracion.isOn = PlayerPrefs.GetInt(KEY_VIBRACION, 1) == 1;
     }
@@ -54,6 +52,19 @@ public class MenuPrincipal : MonoBehaviour
 
     public void Jugar()
     {
+        // FIX: antes se cargaba la escena sin actualizar el estado del GameManager.
+        // El GameManager es DontDestroyOnLoad y quedaba en MainMenu cuando la escena
+        // de juego ya había cargado, bloqueando la tienda y el cartel.
+        //
+        // Ahora: primero reseteamos la partida al día 1 con estado StartDay,
+        // y LUEGO cargamos la escena. Cuando los sistemas de la escena nazcan en
+        // Start/OnEnable ya leerán CurrentState == StartDay y se habilitarán.
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.RestartGame();          // día 1, estado → MainMenu
+            GameManager.Instance.AdvanceToNextState();   // MainMenu → StartDay
+        }
+
         UnityEngine.SceneManagement.SceneManager.LoadScene(nombreEscenaJuego);
     }
 
@@ -91,5 +102,5 @@ public class MenuPrincipal : MonoBehaviour
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static void Mostrar(GameObject p) { if (p != null) p.SetActive(true); }
-    private static void Ocultar(GameObject p)  { if (p != null) p.SetActive(false); }
+    private static void Ocultar(GameObject p) { if (p != null) p.SetActive(false); }
 }
