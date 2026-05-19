@@ -66,9 +66,7 @@ public class SalsaGiroscopio : MonoBehaviour
 
     // ── API PÚBLICA ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Llamado por Gestos.cs cuando detecta HOLD sobre el GameObject de salsa.
-    /// </summary>
+ 
     public void IniciarSalsa(OrdenLista ordenLista)
     {
         if (_activo || ordenLista == null) return;
@@ -98,9 +96,7 @@ public class SalsaGiroscopio : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Llamado por Gestos.cs cuando el jugador levanta el dedo antes de terminar.
-    /// </summary>
+ 
     public void CancelarSalsa()
     {
         if (!_activo || _completado) return;
@@ -113,15 +109,6 @@ public class SalsaGiroscopio : MonoBehaviour
     }
 
     // ── LÓGICA INTERNA ────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Devuelve la inclinación LATERAL del celular (0 = plano/vertical de frente, 1 = volcado de lado).
-    /// Usa gravity.x del giroscopio — este eje es ~0 cuando el celular está:
-    ///   - Plano en la mesa (pantalla arriba)
-    ///   - Vertical de frente (como cuando usas el celular normalmente)
-    /// Y llega a ±1 cuando lo volteas hacia un lado (portrait → landscape boca arriba/abajo).
-    /// El valor absoluto hace que ambos lados cuenten igual.
-    /// </summary>
     private float ObtenerInclinacion()
     {
         if (SystemInfo.supportsGyroscope && Input.gyro.enabled)
