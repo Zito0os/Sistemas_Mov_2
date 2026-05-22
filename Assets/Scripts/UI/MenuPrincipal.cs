@@ -66,6 +66,7 @@ public class MenuPrincipal : MonoBehaviour
         }
 
         UnityEngine.SceneManagement.SceneManager.LoadScene(nombreEscenaJuego);
+        SoundManager.PlayMusicLoop();
     }
 
     public void AbrirOpciones()

@@ -68,6 +68,7 @@ public class ResultadosDiaUI : MonoBehaviour
     /// <summary>Llamado por btn_siguiente (OnClick en el Inspector).</summary>
     public void SiguienteDia()
     {
+        SoundManager.PlaySound(SoundType.BubblePop);
         GameManager.Instance?.AdvanceToNextState();
     }
 }

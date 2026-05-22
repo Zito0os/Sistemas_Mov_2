@@ -159,6 +159,8 @@ public class SistemaOrdenes : MonoBehaviour
             int propinaTotal       = propinaPorTaco * cantidadRequerida;
             pagoFinal = precioBaseTotal + propinaTotal;
 
+            SoundManager.PlaySound(SoundType.Dinero);
+
             Debug.Log($"[SistemaOrdenes] Pedido completado — ✓ CORRECTO | " +
                       $"Cantidad: {cantidadRequerida} | Base: ${precioBaseTotal} | " +
                       $"Propina: ${propinaTotal} | Total: ${pagoFinal}");

@@ -140,6 +140,7 @@ public class SistemaCompras : MonoBehaviour
 
         _abierta = true;
         if (panelTienda != null)
+            SoundManager.PlaySound(SoundType.BubblePop);
             panelTienda.SetActive(true);
 
         ConstruirFilas();
@@ -156,8 +157,8 @@ public class SistemaCompras : MonoBehaviour
 
         _abierta = false;
         if (panelTienda != null)
+            SoundManager.PlaySound(SoundType.BubblePop);
             panelTienda.SetActive(false);
-
         if (logsActivos)
             Debug.Log("[SistemaCompras] Panel cerrado.");
     }
@@ -258,6 +259,7 @@ public class SistemaCompras : MonoBehaviour
         MostrarMensaje($"Compraste {item.nombre}!");
         OnCompraIntentada?.Invoke(item.nombre, item.precio, true);
         ActualizarTextoBalance(economia.GetBalance());
+        SoundManager.PlaySound(SoundType.Dinero);
         RefrescarBotones();
 
         if (logsActivos)
