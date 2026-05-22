@@ -9,11 +9,17 @@ EditorBuildSettings:
     path: Assets/Scenes/MainMenuScene.unity
     guid: 1edbeb031b1681b4f9af73765928be21
   - enabled: 1
+    path: Assets/Scenes/Seleccionar_partida.unity
+    guid: 91df3d609e21a9945b7bab71b0711359
+  - enabled: 1
     path: Assets/Scenes/TestClientes.unity
     guid: e0a938b51ca25ce41bb7656c681e972d
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 0
+    path: Assets/Scenes/Probar_boton.unity
+    guid: 245cddd14456ee84fa0e443394bfcca7
   m_configObjects:
     com.unity.adaptivePerformance.basic.provider_settings: {fileID: 11400000, guid: 2a680e7c26f798b448a9decb055b155f, type: 2}
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 2d09811efa94a6d4f8505591a56ea218, type: 2}

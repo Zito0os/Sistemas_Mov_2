@@ -155,7 +155,7 @@ MonoBehaviour:
   btn_salir: {fileID: 758495861}
   toggle_vibracion: {fileID: 1275520610}
   btn_cerrar_opciones: {fileID: 1716084116}
-  nombreEscenaJuego: TestClientes
+  nombreEscenaJuego: Seleccionar_partida
 --- !u!4 &8449059
 Transform:
   m_ObjectHideFlags: 0
