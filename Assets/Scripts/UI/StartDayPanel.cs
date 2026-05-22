@@ -50,9 +50,9 @@ public class StartDayPanel : MonoBehaviour
         _timer -= Time.deltaTime;
         if (_timer <= 0f)
         {
-            _ocultado = true;
-            gameObject.SetActive(false);
+            CerrarPanel();
             Debug.Log("[StartDayPanel] Panel auto-ocultado. StartDay sigue activo — esperando cartel.");
+            SoundManager.PlayMusicLoop();
         }
     }
 
@@ -60,7 +60,9 @@ public class StartDayPanel : MonoBehaviour
 
     public void CerrarPanel()
     {
+        
         _ocultado = true;
         gameObject.SetActive(false);
+        //SoundManager.PlayMusicLoop();
     }
 }

@@ -72,6 +72,7 @@ public class MenuPausa : MonoBehaviour
     public void IrAlMenu()
     {
         UIManager.Instance?.IrAlMenuPrincipal();
+        SoundManager.StopMusic(); // Parar la música ambiental al volver al menú principal
     }
 
     // ── Opciones ──────────────────────────────────────────────────────────────
