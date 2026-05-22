@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using TMPro;
 
 public class GuardadoPartidaUI : MonoBehaviour
 {
@@ -69,6 +70,7 @@ public class GuardadoPartidaUI : MonoBehaviour
     {
         ConfigurarAuto();
         AsegurarEventSystemCompat();
+        ActualizarTextoSlots();
         LogRuntimeUIState();
         SincronizarModal();
     }
@@ -137,6 +139,31 @@ public class GuardadoPartidaUI : MonoBehaviour
 
         if (_botonGuardar != null)
             _botonGuardar.onClick.RemoveListener(AlPresionarGuardar);
+    }
+
+    private void ActualizarTextoSlots()
+    {
+        foreach (KeyValuePair<int, Button> par in _botonesSlot)
+        {
+            if (par.Value == null)
+                continue;
+
+            ActualizarTextoSlot(par.Key, par.Value);
+        }
+    }
+
+    private void ActualizarTextoSlot(int slot, Button boton)
+    {
+        if (boton == null)
+            return;
+
+        TextMeshProUGUI textoTmp = boton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (textoTmp == null)
+            return;
+
+        textoTmp.text = GuardadoPartidaManager.Instance != null
+            ? GuardadoPartidaManager.Instance.ObtenerResumenSlot(slot)
+            : "Sin informacion de partida";
     }
 
     private void AlPresionarCrear()
@@ -209,6 +236,7 @@ public class GuardadoPartidaUI : MonoBehaviour
 
         if (gestor.GuardarPartidaActual())
         {
+            ActualizarTextoSlots();
             MostrarMensajeGuardado();
             return;
         }
@@ -262,6 +290,7 @@ public class GuardadoPartidaUI : MonoBehaviour
                 gestor.PrepararNuevaPartida(_slotPendiente);
                 gestor.GuardarDatosPendientes();
                 _esperandoSeleccionCreacion = false;
+                ActualizarTextoSlots();
                 MostrarMensajeGuardado();
                 _accionPendiente = TipoAccionPendiente.Ninguna;
                 _slotPendiente = -1;
@@ -272,6 +301,7 @@ public class GuardadoPartidaUI : MonoBehaviour
                 gestor.PrepararNuevaPartida(_slotPendiente);
                 gestor.GuardarDatosPendientes();
                 _esperandoSeleccionCreacion = false;
+                ActualizarTextoSlots();
                 MostrarMensajeGuardado();
                 _accionPendiente = TipoAccionPendiente.Ninguna;
                 _slotPendiente = -1;

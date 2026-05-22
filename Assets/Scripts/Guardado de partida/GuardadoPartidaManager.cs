@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Globalization;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -233,6 +234,10 @@ public class GuardadoPartidaManager : MonoBehaviour
         if (datos == null)
             return "Sin informacion de partida";
 
+        string fechaFormateada = FormatearFechaGuardado(datos.fechaUtc);
+        if (!string.IsNullOrEmpty(fechaFormateada))
+            return $"Dia {datos.diaActual} | Balance ${datos.balanceTotal}\n{fechaFormateada}";
+
         return $"Dia {datos.diaActual} | Balance ${datos.balanceTotal}";
     }
 
@@ -414,5 +419,19 @@ public class GuardadoPartidaManager : MonoBehaviour
         {
             Debug.LogWarning($"[GuardadoPartidaManager] No se pudo invocar el evento '{nombreEvento}' de '{tipo.Name}': {ex.Message}");
         }
+    }
+
+    private static string FormatearFechaGuardado(string fechaUtc)
+    {
+        if (string.IsNullOrWhiteSpace(fechaUtc))
+            return string.Empty;
+
+        if (DateTimeOffset.TryParse(fechaUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset fechaGuardado))
+        {
+            DateTime local = fechaGuardado.LocalDateTime;
+            return local.ToString("dd/MM/yyyy HH:mm");
+        }
+
+        return string.Empty;
     }
 }
