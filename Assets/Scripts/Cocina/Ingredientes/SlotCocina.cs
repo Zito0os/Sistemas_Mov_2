@@ -134,6 +134,8 @@ public class SlotCocina : MonoBehaviour
         // Soltar el ingrediente de la mano y colocarlo en el slot
         station.SoltarIngrediente();
 
+        SoundManager.PlaySound(SoundType.IngredienteEnPlancha);
+
         ingredienteActual = enMano;
         estaCocido = false;
         etapaTortilla = 0;

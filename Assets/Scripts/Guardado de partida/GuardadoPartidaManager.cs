@@ -138,6 +138,12 @@ public class GuardadoPartidaManager : MonoBehaviour
         slotActual = slot;
         datosPendientes = CrearDatosIniciales(slot);
         modoPendiente = ModoPendiente.NuevaPartida;
+
+        // Resetear tutoriales para que aparezcan en cada partida nueva
+        PlayerPrefs.DeleteKey("TutorialInicioVisto");
+        PlayerPrefs.DeleteKey("TutorialCocinaVisto");
+        PlayerPrefs.Save();
+
         return true;
     }
 

@@ -1,10 +1,8 @@
 #pragma warning disable 0436
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
-/// <summary>
-/// CuotaDePiso — Gestiona el cobro al final de cada semana (cada 3 días por defecto).
-/// Se activa al entrar al estado GameState.CuotaDePiso en GameManager.
-/// </summary>
 public class CuotaDePiso : MonoBehaviour
 {
     [Header("Configuración de cuota")]
@@ -13,21 +11,52 @@ public class CuotaDePiso : MonoBehaviour
 
     [Header("Debug")]
     [SerializeField] private bool resolverAutomaticamente = true;
-    [SerializeField] private KeyCode teclaForzarPago = KeyCode.P;
-    [SerializeField] private KeyCode teclaForzarNoPago = KeyCode.O;
+    [SerializeField] private KeyCode teclaForzarPago    = KeyCode.P;
+    [SerializeField] private KeyCode teclaForzarNoPago  = KeyCode.O;
 
-    [Header("Runtime")]
-    [SerializeField] private int cuotaActual;
+    [Header("Referencias UI — Panel raíz")]
+    [SerializeField] private GameObject panelRaiz;
+
+    [Header("Referencias UI — Textos")]
+    [SerializeField] private TextMeshProUGUI txtTitulo;
+    [SerializeField] private TextMeshProUGUI txtSemana;
+    [SerializeField] private TextMeshProUGUI txtMonto;
+    [SerializeField] private TextMeshProUGUI txtBalance;
+    [SerializeField] private TextMeshProUGUI txtResultado;
+
+    [Header("Referencias UI — Botones")]
+    [SerializeField] private Button btnPagar;       // Solo en modo debug (resolverAutomaticamente = false)
+    [SerializeField] private Button btnRegresar;    // Solo si cuota NO cumplida
+    [SerializeField] private Button btnSiguiente;   // Solo si cuota cumplida
+    [SerializeField] private Button btnSalir;
+
+    [Header("Mensajes editables")]
+    [SerializeField] private string mensajeTitulo      = "CUOTA DE PISO";
+    [SerializeField] private string mensajeCumplida    = "¡Cumpliste la cuota de piso!";
+    [SerializeField] private string mensajeNoCumplida  = "No cumpliste la cuota de piso.";
+    [SerializeField] private string mensajeNoCumplida2 = "Regresarás al inicio de la semana.";
+
+    // ── Eventos públicos ──────────────────────────────────────────────────────
+    public static event System.Action<int, int, int>             OnCuotaCalculada;
+    public static event System.Action<bool, int, int, int, int>  OnResultadoCuota;
+    // OnResultadoCuota: (pagada, cuota, balanceAntes, balanceDespues, semana)
+
+    // ── Estado interno ────────────────────────────────────────────────────────
+    [Header("Runtime (solo lectura)")]
+    [SerializeField] private int  cuotaActual;
     [SerializeField] private bool cuotaPendiente;
-    [SerializeField] private bool mostrarMenuResultado;
     [SerializeField] private bool cuotaCumplida;
-    [SerializeField] private string mensajeResultado = string.Empty;
+    [SerializeField] private bool mostrandoResultado;
 
-    public static event System.Action<int, int, int> OnCuotaCalculada;
-    public static event System.Action<bool, int, int, int, int> OnResultadoCuota;
-    // (pagada, cuota, balanceAntes, balanceDespues, semana)
+    // ─────────────────────────────────────────────────────────────────────────
 
-    private Rect _rectMenu = new Rect(20, 20, 420, 220);
+    private void Awake()
+    {
+        if (btnPagar     != null) btnPagar    .onClick.AddListener(() => ResolverCuota(forzarPago: true));
+        if (btnRegresar  != null) btnRegresar .onClick.AddListener(ClickRegresar);
+        if (btnSiguiente != null) btnSiguiente.onClick.AddListener(ClickSiguienteSemana);
+        if (btnSalir     != null) btnSalir    .onClick.AddListener(ClickSalir);
+    }
 
     private void OnEnable()
     {
@@ -37,6 +66,14 @@ public class CuotaDePiso : MonoBehaviour
     private void OnDisable()
     {
         GameManager.OnStateChanged -= AlCambiarEstado;
+    }
+
+    private void OnDestroy()
+    {
+        if (btnPagar     != null) btnPagar    .onClick.RemoveAllListeners();
+        if (btnRegresar  != null) btnRegresar .onClick.RemoveAllListeners();
+        if (btnSiguiente != null) btnSiguiente.onClick.RemoveAllListeners();
+        if (btnSalir     != null) btnSalir    .onClick.RemoveAllListeners();
     }
 
     private void Update()
@@ -55,11 +92,7 @@ public class CuotaDePiso : MonoBehaviour
         }
     }
 
-    private void OnGUI()
-    {
-        if (!mostrarMenuResultado) return;
-        _rectMenu = GUI.Window(9381, _rectMenu, DibujarVentanaResultado, "CUOTA DE PISO");
-    }
+    // ── Listener de estado ────────────────────────────────────────────────────
 
     private void AlCambiarEstado(GameManager.GameState estado)
     {
@@ -73,28 +106,7 @@ public class CuotaDePiso : MonoBehaviour
             Debug.Log($"[CuotaDePiso][DEBUG] Presiona {teclaForzarPago} para pagar o {teclaForzarNoPago} para no pagar.");
     }
 
-    private void DibujarVentanaResultado(int windowId)
-    {
-        GUILayout.BeginVertical();
-        GUILayout.Space(8);
-        GUILayout.Label(mensajeResultado);
-        GUILayout.Space(8);
-
-        if (GUILayout.Button("Regresar", GUILayout.Height(34)))
-            ClickRegresar();
-
-        if (GUILayout.Button("Salir", GUILayout.Height(34)))
-            ClickSalir();
-
-        if (cuotaCumplida)
-        {
-            if (GUILayout.Button("Siguiente semana", GUILayout.Height(34)))
-                ClickSiguienteSemana();
-        }
-
-        GUILayout.EndVertical();
-        GUI.DragWindow(new Rect(0, 0, 10000, 24));
-    }
+    // ── Lógica principal ──────────────────────────────────────────────────────
 
     private void PrepararCobro()
     {
@@ -106,13 +118,19 @@ public class CuotaDePiso : MonoBehaviour
             return;
         }
 
-        int semana = gm.CurrentWeek;
+        int semana  = gm.CurrentWeek;
         cuotaActual = CalcularCuota(semana);
-        cuotaPendiente = true;
+        cuotaPendiente     = true;
+        mostrandoResultado = false;
 
         int balance = GestorEconomia.Instancia != null ? GestorEconomia.Instancia.GetBalance() : 0;
-        Debug.Log($"[CuotaDePiso] INICIO COBRO | Semana: {semana} | Día global: {gm.CurrentDay} | Día en semana: {gm.DayInWeek}/{gm.DaysPerWeek} | Cuota: ${cuotaActual} | Balance actual: ${balance}");
+
+        Debug.Log($"[CuotaDePiso] INICIO COBRO | Semana: {semana} | Día global: {gm.CurrentDay} " +
+                  $"| Día en semana: {gm.DayInWeek}/{gm.DaysPerWeek} " +
+                  $"| Cuota: ${cuotaActual} | Balance actual: ${balance}");
+
         OnCuotaCalculada?.Invoke(cuotaActual, balance, semana);
+        MostrarPanelCobro(semana, cuotaActual, balance);
     }
 
     private int CalcularCuota(int semana)
@@ -125,7 +143,7 @@ public class CuotaDePiso : MonoBehaviour
     {
         if (!cuotaPendiente) return;
 
-        GameManager gm = GameManager.Instance;
+        GameManager    gm       = GameManager.Instance;
         GestorEconomia economia = GestorEconomia.Instancia;
 
         if (gm == null || economia == null)
@@ -135,40 +153,70 @@ public class CuotaDePiso : MonoBehaviour
             return;
         }
 
-        int semana = gm.CurrentWeek;
-        int balanceAntes = economia.GetBalance();
+        int  semana       = gm.CurrentWeek;
+        int  balanceAntes = economia.GetBalance();
+        bool pagada       = economia.SpendMoney(cuotaActual);
 
-        bool pagada;
-        if (forzarPago)
-        {
-            pagada = economia.SpendMoney(cuotaActual);
-            if (!pagada)
-                Debug.LogWarning("[CuotaDePiso][DEBUG] Se forzó pago, pero no alcanzó el dinero. Se tomará como no pagada.");
-        }
-        else
-        {
-            pagada = economia.SpendMoney(cuotaActual);
-        }
+        if (forzarPago && !pagada)
+            Debug.LogWarning("[CuotaDePiso][DEBUG] Se forzó pago, pero no alcanzó el dinero. Se tomará como no pagada.");
 
         int balanceDespues = economia.GetBalance();
-        cuotaPendiente = false;
-        cuotaCumplida = pagada;
-        mostrarMenuResultado = true;
+        cuotaPendiente     = false;
+        cuotaCumplida      = pagada;
+        mostrandoResultado = true;
 
         Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-
-        mensajeResultado = pagada
-            ? "¡Cumpliste la cuota de piso!"
-            : "No cumpliste la cuota de piso.";
+        Cursor.visible   = true;
 
         if (pagada)
-            Debug.Log($"[CuotaDePiso] CUOTA CUMPLIDA | Semana: {semana} | Balance: ${balanceAntes} -> ${balanceDespues}");
+            Debug.Log($"[CuotaDePiso] CUOTA CUMPLIDA | Semana: {semana} | Balance: ${balanceAntes} → ${balanceDespues}");
         else
-            Debug.LogWarning($"[CuotaDePiso] CUOTA NO CUMPLIDA | Semana: {semana} | Balance: ${balanceAntes} -> ${balanceDespues} | Se regresará al inicio de semana.");
+            Debug.LogWarning($"[CuotaDePiso] CUOTA NO CUMPLIDA | Semana: {semana} | Balance: ${balanceAntes} → ${balanceDespues} | Se regresará al inicio de semana.");
 
         OnResultadoCuota?.Invoke(pagada, cuotaActual, balanceAntes, balanceDespues, semana);
+        MostrarResultado(pagada, balanceDespues);
     }
+
+    // ── Métodos de UI ─────────────────────────────────────────────────────────
+
+    private void MostrarPanelCobro(int semana, int cuota, int balance)
+    {
+        Debug.Log($"[CuotaDePiso] MostrarPanelCobro — panelRaiz={panelRaiz}");
+
+        if (panelRaiz != null)
+            panelRaiz.SetActive(true);
+
+        SetTexto(txtTitulo,    mensajeTitulo);
+        SetTexto(txtSemana,    $"Semana {semana}");
+        SetTexto(txtMonto,     $"Cuota: ${cuota}");
+        SetTexto(txtBalance,   $"Tu dinero: ${balance}");
+        SetTexto(txtResultado, string.Empty);
+
+        // Todos los botones de resultado ocultos hasta resolver
+        SetActivo(btnPagar,     !resolverAutomaticamente);
+        SetActivo(btnRegresar,  false);
+        SetActivo(btnSiguiente, false);
+        SetActivo(btnSalir,     false);
+    }
+
+    private void MostrarResultado(bool pagada, int balanceFinal)
+    {
+        SetTexto(txtBalance, $"Tu dinero: ${balanceFinal}");
+
+        if (pagada)
+            SetTexto(txtResultado, mensajeCumplida);
+        else
+            SetTexto(txtResultado, $"{mensajeNoCumplida}\n{mensajeNoCumplida2}");
+
+        // Cuota cumplida   → Siguiente semana + Salir (sin Regresar)
+        // Cuota NO cumplida → Regresar + Salir (sin Siguiente)
+        SetActivo(btnPagar,     false);
+        SetActivo(btnSiguiente, pagada);
+        SetActivo(btnRegresar,  !pagada);
+        SetActivo(btnSalir,     true);
+    }
+
+    // ── Handlers de botones ───────────────────────────────────────────────────
 
     private void ClickRegresar()
     {
@@ -179,28 +227,14 @@ public class CuotaDePiso : MonoBehaviour
             return;
         }
 
-        if (!cuotaCumplida)
-        {
-            Debug.Log("[CuotaDePiso] Regresar seleccionado con cuota NO cumplida. Volviendo al inicio de la semana.");
-            mostrarMenuResultado = false;
-            gm.RegistrarResultadoCuota(false);
-            return;
-        }
-
-        var gestorClientes = FindFirstObjectByType<GestorClientes>();
-        if (gestorClientes != null)
-            gestorClientes.DetenerTurno();
-
-        Debug.Log("[CuotaDePiso] Regresar seleccionado con cuota cumplida.");
-        mostrarMenuResultado = false;
-
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // Regresar solo aparece cuando la cuota NO fue cumplida
+        Debug.Log("[CuotaDePiso] Regresar — cuota NO cumplida. Volviendo al inicio de la semana.");
+        OcultarPanel();
+        gm.RegistrarResultadoCuota(false);
     }
+
     private void ClickSiguienteSemana()
     {
-        if (!cuotaCumplida) return;
-
         GameManager gm = GameManager.Instance;
         if (gm == null)
         {
@@ -208,14 +242,44 @@ public class CuotaDePiso : MonoBehaviour
             return;
         }
 
-        Debug.Log("[CuotaDePiso] Siguiente semana seleccionado. Avanzando al siguiente día de la siguiente semana.");
-        mostrarMenuResultado = false;
+        // Siguiente solo aparece cuando la cuota SÍ fue cumplida
+        Debug.Log("[CuotaDePiso] Siguiente semana — avanzando al siguiente ciclo.");
+        OcultarPanel();
         gm.RegistrarResultadoCuota(true);
     }
 
-    private void ClickSalir()
+     private void ClickSalir()
+        {
+            GameManager gm = GameManager.Instance;
+            if (gm == null)
+            {
+                Debug.LogError("[CuotaDePiso] No hay GameManager activo al presionar Salir.");
+                return;
+            }
+    
+            Debug.Log("[CuotaDePiso] Salir seleccionado. Regresando al menú principal.");
+            OcultarPanel();
+            UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenuScene");
+        }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private void OcultarPanel()
     {
-        Debug.Log("[CuotaDePiso] Salir seleccionado. Cerrando juego...");
-        Application.Quit();
+        mostrandoResultado = false;
+        if (panelRaiz != null)
+            panelRaiz.SetActive(false);
+    }
+
+    private static void SetTexto(TextMeshProUGUI label, string texto)
+    {
+        if (label != null)
+            label.text = texto;
+    }
+
+    private static void SetActivo(Button boton, bool activo)
+    {
+        if (boton != null)
+            boton.gameObject.SetActive(activo);
     }
 }

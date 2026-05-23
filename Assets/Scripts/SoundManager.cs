@@ -7,6 +7,7 @@ public enum SoundType
     Dinero,
     BubblePop,
     MusicaAmbiente,
+    IngredienteEnPlancha,
 }
 
 [RequireComponent(typeof(AudioSource))]

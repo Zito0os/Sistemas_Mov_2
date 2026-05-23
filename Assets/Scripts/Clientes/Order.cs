@@ -47,9 +47,10 @@ public class Orden
     // GENERACIÓN ALEATORIA
 
     // Genera un pedido aleatorio escalado al día actual.
-    // Días 1-3:  Solo Pastor. Toppings: solo Salsa (50% chance) o ninguno. Sin Cebolla ni Cilantro. Paciencia larga.
-    // Días 4-7:  Pastor o Picadillo. Toppings: Cebolla, Cilantro, Piña, Salsa. 1-2 toppings. Paciencia media.
-    //Días 8+:   Todas las carnes. Todos los toppings. 2-3 toppings. Paciencia corta.
+    // Días 1-3:  Solo Pastor. Toppings: solo Salsa (50% chance) o ninguno. Paciencia larga.
+    // Días 4-7:  Pastor o Picadillo. Toppings: Piña y/o Salsa (1-2). Paciencia media.
+    // Días 8+:   Todas las carnes. Toppings: Piña y/o Salsa (1-2). Paciencia corta.
+    // NOTA: Cebolla y Cilantro excluidos de todos los días (no implementados en cocina).
     public static Orden GenerarAleatoria(int diaActual)
     {
         TipoCarne         carne    = ObtenerCarneAleatoria(diaActual);
@@ -86,17 +87,16 @@ public class Orden
         }
 
         // ── DÍAS 4-7 ──────────────────────────────────────────────────────────
-        // Cebolla, Cilantro, Piña, Salsa disponibles. 1-2 toppings.
+        // Solo Piña y Salsa disponibles. 1-2 toppings.
         // ── DÍAS 8+ ───────────────────────────────────────────────────────────
-        // Todos los toppings. 2-3 toppings.
+        // Solo Piña y Salsa disponibles. 1-2 toppings. Paciencia corta.
+        // (Cebolla y Cilantro excluidos — no implementados en cocina)
 
-        int maxToppings = dia >= 8 ? 3 : 2;
+        int maxToppings = 2;
         int cantidad    = Random.Range(1, maxToppings + 1);
 
         var disponibles = new List<TipoTopping>
         {
-            TipoTopping.Cebolla,
-            TipoTopping.Cilantro,
             TipoTopping.Pina,
             TipoTopping.Salsa
         };
